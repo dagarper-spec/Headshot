@@ -1,0 +1,1 @@
+Pon aquí enemy.glb (modelo humanoide, ~1.8 m, mirando a +Z). Si no existe, se usa el enemigo procedural.

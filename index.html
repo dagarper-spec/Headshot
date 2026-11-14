@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d11">
+<title>HEADSHOT — Arena</title>
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hide">
+  <div id="hp"><i id="hpf"></i><span id="hpt">100</span></div>
+  <div id="wv">OLEADA 1</div>
+  <div id="sc"><b id="score">0</b><small id="combo"></small></div>
+  <div id="ammo"><b id="mag">30</b><small id="rl"></small></div>
+  <div id="xh"></div><div id="hm"></div><div id="vig"></div>
+  <div id="ban"></div><div id="toast"></div>
+</div>
+
+<div id="touch" class="hide">
+  <div id="stick"><i></i></div>
+  <div class="btn" id="bFire">FUEGO</div>
+  <div class="btn" id="bRel">R</div>
+</div>
+
+<div id="menu" class="ov">
+  <h1 id="mtitle">HEADSHOT</h1>
+  <p class="sub">Sobrevive a las oleadas en el almacén</p>
+  <p id="best" class="best"></p>
+  <button id="start" class="big">Jugar</button>
+  <label class="q">Calidad
+    <select id="quality">
+      <option value="auto">Auto</option><option value="high">Alta</option>
+      <option value="medium">Media</option><option value="low">Baja</option>
+    </select>
+  </label>
+  <p class="help">PC: WASD mover · ratón apuntar · clic disparar · R recargar · Esc pausa<br>
+  Móvil: joystick izquierda · arrastra a la derecha para apuntar · botón FUEGO</p>
+</div>
+
+<div id="upg" class="ov hide">
+  <h2>Elige una mejora</h2>
+  <div id="cards"></div>
+</div>
+
+<div id="over" class="ov hide">
+  <h1>HAS CAÍDO</h1>
+  <p id="ostats" class="sub"></p>
+  <button id="again" class="big">Jugar de nuevo</button>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
