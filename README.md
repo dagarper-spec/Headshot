@@ -1,14 +1,15 @@
-# HEADSHOT — FPS de arena por oleadas (Three.js)
+# HEADSHOT — duelo táctico en primera persona (Three.js)
 
-Sobrevive a oleadas de enemigos en un almacén industrial. Apunta a la cabeza (x2.5 de daño), encadena bajas para subir el combo (hasta x5) y elige una mejora entre oleadas.
+Un almacén, una pistola de 6 balas y enemigos que se esconden, asoman y te apuntan (láser rojo). Tienes 2 vidas: un tiro al cuerpo te hiere, a la cabeza te mata. Igual para ellos, pero el casco aguanta un tiro en la cabeza.
 
-**Controles:** PC: WASD, ratón, clic, R, Esc · Móvil: joystick izquierdo, arrastrar a la derecha para apuntar, botón FUEGO.
+**PC:** WASD mover · ratón girar (Q/E o flechas) · clic disparar · clic derecho zoom · R recargar · Esc pausa
+**Móvil:** ruleta izquierda mover · ruleta derecha mirar · FUEGO · MIRA (zoom)
 
 ## Estructura
-- `js/game-core.js` y `js/game-combat.js`: lógica pura (sin render). Delta Time, Object Pool de enemigos.
-- `js/view-scene.js`, `view-textures.js`, `view-fx.js`: render PBR, EffectComposer (Bloom, MSAA, FXAA, ACES) y efectos con pooling.
+- `js/game-core.js`, `game-combat.js`, `game-geom.js`: lógica pura (sin render). IA con coberturas, Delta Time, Object Pool.
+- `js/view-scene.js`, `view-models.js` (soldado y pistola), `view-textures.js`, `view-fx.js`: render PBR, EffectComposer (Bloom, MSAA, FXAA, ACES) y efectos con pooling.
 - `js/loader.js`: GLTFLoader (+Draco). Coloca `assets/models/enemy.glb` para usar un modelo externo.
-- `js/config.js`: mapa, enemigos, mejoras y niveles de calidad (baja/media/alta, ajuste automático por FPS).
+- `js/config.js`: mapa, niveles y dificultad de calidad (baja/media/alta, ajuste automático por FPS).
 
 ## Ejecutar
 Necesita servidor (módulos ES): `npx serve` o GitHub Pages. Three.js se carga desde jsDelivr.

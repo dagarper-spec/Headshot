@@ -1,7 +1,7 @@
 // Punto de entrada: une lógica, vista, audio e interfaz. Bucle con Delta Time y calidad adaptable.
-import { CFG, TIERS, UPGRADES } from './config.js';
+import { CFG, TIERS, LEVELS } from './config.js';
 import * as core from './game-core.js';
-import { stats, applyUpgrade, reload, updateCombat, aimingAtEnemy } from './game-combat.js';
+import { stats, reload, updateCombat, aimAssist } from './game-combat.js';
 import { loadModel } from './loader.js';
 import { createView } from './view-scene.js';
 import { createFx } from './view-fx.js';
@@ -16,6 +16,7 @@ const data = loadSave();
 const $ = (id) => document.getElementById(id);
 
 initInput(canvas);
+window.headshot = { S, core }; // acceso para pruebas y depuración
 
 // Calidad inicial según dispositivo (móvil -> más baja). Auto reduce si los FPS caen.
 function autoTier() {
@@ -32,89 +33,85 @@ async function boot() {
     console.warn('createView falló, reintento en baja', e); tier = 'low'; view = createView(canvas, 'low', model);
   }
   const fx = createFx(view.scene, view.camera);
+  let slowT = 0, endTimer = 0; // cámara lenta al terminar el nivel
 
   // ----- Eventos de la lógica -> efectos, sonido y UI -----
   on('shot', (d) => {
     sfx.shot(); fx.shoot(d.end);
-    if (d.hit) fx.burst(...d.end, 1.6, 0.1, 0.05, d.head ? 14 : 8, 3);
-    else fx.burst(...d.end, 2.4, 1.6, 0.6, 6, 3.5);
+    if (!d.hit) fx.burst(...d.end, 2.4, 1.6, 0.6, 7, 3.5); // chispas en la pared/caja
   });
-  on('hit', (d) => { (d.head ? sfx.head : sfx.hit)(); ui.hitmarker(false, d.head); });
-  on('kill', (d) => {
-    sfx.kill(); ui.hitmarker(true, d.head);
-    fx.burst(d.e.x, d.e.h * 0.55, d.e.z, 1.8, 0.08, 0.04, 30, 5);
+  on('enemyShot', (d) => {
+    sfx.eshot(); fx.shoot(d.end, d.from);
+    fx.burst(...d.from, 3, 2, 0.8, 6, 2);
+    if (!d.hit) fx.burst(...d.end, 2.4, 1.6, 0.6, 6, 3);
   });
-  on('hurt', () => { sfx.hurt(); ui.hurt(); fx.shake = 0.6; });
+  on('hit', (d) => { sfx.hit(); ui.hitmarker(false, false); fx.burst(...d.pt, 1.6, 0.1, 0.05, 12, 3); });
+  on('helmet', (d) => { sfx.head(); ui.hitmarker(false, true); fx.burst(...d.pt, 3, 2.6, 1.6, 22, 5); ui.toast('¡Casco fuera! Otro tiro a la cabeza'); });
+  on('kill', (d) => { sfx.kill(); ui.hitmarker(true, d.head); fx.burst(...d.pt, 1.8, 0.08, 0.04, 34, 5); });
+  on('hurt', (d) => { sfx.hurt(); ui.hurt(); fx.shake = d.head ? 1 : 0.6; if (!d.head) ui.toast('Herido: un tiro más y caes'); });
   on('reload', () => sfx.reload());
   on('empty', () => sfx.empty());
-  on('wave', (w) => { ui.banner('OLEADA ' + w); sfx.wave(); });
-  on('waveclear', (w) => {
-    if (document.pointerLockElement) document.exitPointerLock();
-    const pick = UPGRADES.slice().sort(() => Math.random() - 0.5).slice(0, 3);
-    ui.upgrades(pick, (id) => {
-      applyUpgrade(id); sfx.up(); core.nextWave();
-      if (!input.touch) canvas.requestPointerLock();
-    });
-    ui.banner('OLEADA ' + w + ' SUPERADA', 1500);
-  });
-  on('over', () => {
-    if (document.pointerLockElement) document.exitPointerLock();
-    const isNew = S.score > data.best;
-    if (isNew) { data.best = S.score; data.wave = S.wave; writeSave(data); }
-    ui.over(S, data, isNew);
-  });
+  on('level', (i) => { ui.banner(LEVELS[i].name.toUpperCase(), 1600); sfx.wave(); });
+  const finish = () => { slowT = 1.1; endTimer = 1.3; };
+  on('win', finish);
+  on('over', finish);
 
   // ----- Menús -----
-  const best = () => (data.best ? { score: data.best, wave: data.wave } : null);
   const sel = $('quality'); sel.value = data.quality;
   sel.onchange = () => {
     data.quality = sel.value; writeSave(data);
     tier = sel.value === 'auto' ? autoTier() : sel.value; view.setQuality(tier);
   };
-  const chk = $('auto'); chk.checked = data.auto;
-  chk.onchange = () => { data.auto = chk.checked; writeSave(data); };
-  const begin = () => {
+  const note = () => 'Nivel ' + (data.level + 1) + ': ' + LEVELS[data.level % LEVELS.length].name;
+  const begin = (lvl) => {
     try { initAudio(); } catch { /* sin audio */ }
     if (!input.touch) canvas.requestPointerLock();
     ui.hide('menu'); ui.hide('over'); ui.show('hud');
     if (input.touch) ui.show('touch');
-    if (S.state === 'pause') S.state = 'play'; else core.startGame();
+    if (S.state === 'pause') S.state = 'play'; else core.startLevel(lvl);
   };
-  $('start').onclick = begin;
-  $('again').onclick = begin;
-  document.addEventListener('pointerlockchange', () => {
-    if (!document.pointerLockElement && S.state === 'play' && !input.touch) {
-      S.state = 'pause'; input.fire = false; ui.menu('PAUSA', 'Continuar', best());
-    }
-  });
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && S.state === 'play') { S.state = 'pause'; input.fire = false; ui.menu('PAUSA', 'Continuar', best()); }
-  });
-  ui.menu('HEADSHOT', 'Jugar', best());
+  $('start').onclick = () => begin(data.level);
+  $('again').onclick = () => begin(S.state === 'win' ? S.level + 1 : S.level); // victoria -> siguiente; derrota -> reintentar
+  addEventListener('keydown', (e) => { if (e.code === 'Enter' && !$('over').classList.contains('hide')) $('again').click(); });
+  const pause = () => { if (S.state === 'play') { S.state = 'pause'; input.fire = false; input.zoom = false; ui.menu('PAUSA', 'Continuar', note()); } };
+  document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && !input.touch) pause(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  ui.menu('HEADSHOT', 'Jugar', note());
 
   // ----- Bucle principal con Delta Time -----
   let prev = performance.now(), acc = 0, frames = 0, warm = 2;
   function frame(now) {
     requestAnimationFrame(frame);
-    const dt = Math.min((now - prev) / 1000, 0.05); // limitar saltos (pestaña en segundo plano)
+    const raw = Math.min((now - prev) / 1000, 0.05); // limitar saltos (pestaña en segundo plano)
     prev = now;
+    if (slowT > 0) slowT -= raw;
+    const dt = raw * (slowT > 0 ? 0.25 : 1); // cámara lenta
+    if (endTimer > 0 && (endTimer -= raw) <= 0) { // mostrar resultado tras la cámara lenta
+      if (document.pointerLockElement) document.exitPointerLock();
+      if (S.state === 'win') {
+        data.level = Math.max(data.level, (S.level + 1) % LEVELS.length); writeSave(data);
+        ui.end(true, 'NIVEL SUPERADO', 'Tiempo <b>' + S.t.toFixed(1) + ' s</b>', 'Siguiente nivel');
+      } else ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar');
+    }
+    S.zoom = input.zoom && S.state === 'play';
     if (S.state === 'play') {
       poll(dt);
-      const k = dt / CFG.player.sens; // ruleta derecha / teclado -> velocidad angular (rad/s) con Delta Time
+      // ruletas/teclado -> velocidad angular con Delta Time; ayuda al apuntar y zoom reducen la sensibilidad
+      const k = (dt / CFG.player.sens) * (S.zoom ? 0.5 : 1) * (input.touch && aimAssist() ? 0.5 : 1);
       core.look(input.dx - input.turn * 2.4 * k + input.rx * 3.3 * k, input.dy + input.ry * 2.3 * k);
       core.update(dt, input);
       if (input.reload) reload();
-      updateCombat(dt, input.fire || (input.touch && data.auto && aimingAtEnemy()));
-    }
+      updateCombat(dt, input.fire);
+    } else core.update(dt, input);
     input.dx = input.dy = 0; input.reload = false;
     fx.update(dt);
     const st = stats();
     view.sync(S, now / 1000, dt, fx, S.reloading ? 1 - S.reloadT / st.reload : -1);
-    if (S.state !== 'menu') ui.hud(S, st);
+    if (S.state !== 'menu') ui.hud(S, st, LEVELS[S.level].name);
     view.render();
 
     // Calidad adaptable: si la media de FPS baja de 40 durante 2 s, bajar un nivel.
-    acc += dt; frames++;
+    acc += raw; frames++;
     if (acc >= 2) {
       const fps = frames / acc; acc = 0; frames = 0;
       if (warm > 0) warm--;

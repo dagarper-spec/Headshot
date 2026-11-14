@@ -46,16 +46,16 @@ export function createFx(scene, camera) {
     }
   };
 
-  fx.shoot = (end) => { // trazador desde el arma hasta el impacto
+  fx.shoot = (end, from) => { // trazador desde el arma (o desde `from`, un enemigo) hasta el impacto
     const t = tracers[ti]; ti = (ti + 1) % NT;
-    camera.updateMatrixWorld();
-    tmp.set(0.22, -0.18, -0.7).applyMatrix4(camera.matrixWorld);
+    if (from) tmp.set(from[0], from[1], from[2]);
+    else { camera.updateMatrixWorld(); tmp.set(0.17, -0.12, -0.62).applyMatrix4(camera.matrixWorld); }
     tmp2.set(end[0], end[1], end[2]);
     t.position.copy(tmp).lerp(tmp2, 0.5);
     t.scale.z = tmp.distanceTo(tmp2);
     t.lookAt(tmp2);
     t.userData.life = 0.07; t.visible = true;
-    fx.kick = 1; fx.flashT = 0.05; fx.shake = Math.max(fx.shake, 0.08);
+    if (!from) { fx.kick = 1; fx.flashT = 0.05; fx.shake = Math.max(fx.shake, 0.08); }
   };
 
   fx.update = (dt) => {

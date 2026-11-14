@@ -11,6 +11,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { CFG, QUALITY } from './config.js';
 import { makeMaterials, uvs } from './view-textures.js';
+import { buildSoldier, buildViewPistol, poseSoldier } from './view-models.js';
 
 const std = (color, rough, metal = 0, extra = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, envMapIntensity: 0.5, ...extra });
@@ -80,46 +81,18 @@ export function createView(canvas, tier, model) {
   });
 
   // ---------- Arma en primera persona ----------
-  const gun = new THREE.Group();
-  const metal = std(0x1a1c20, 0.35, 0.9), poly = std(0x2b2e34, 0.6, 0.1);
-  const part = (geo, mat, x, y, z, rx = 0) => {
-    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; gun.add(m); return m;
-  };
-  part(new THREE.BoxGeometry(0.06, 0.09, 0.42), metal, 0, 0, 0);
-  part(new THREE.BoxGeometry(0.05, 0.06, 0.3), poly, 0, 0.005, -0.34);
-  part(new THREE.CylinderGeometry(0.014, 0.014, 0.3, 10), metal, 0, 0.015, -0.62, Math.PI / 2);
-  part(new THREE.BoxGeometry(0.045, 0.14, 0.06), poly, 0, -0.11, 0.1, 0.25);
-  part(new THREE.BoxGeometry(0.04, 0.16, 0.07), poly, 0, -0.12, -0.1, -0.1);
-  part(new THREE.BoxGeometry(0.05, 0.08, 0.22), poly, 0, -0.01, 0.3);
-  part(new THREE.BoxGeometry(0.012, 0.02, 0.012), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.2, 0.1) }), 0, 0.058, -0.2);
-  gun.position.set(0.2, -0.2, -0.45);
+  const gun = buildViewPistol();
+  gun.scale.setScalar(0.85);
+  gun.position.set(0.17, -0.17, -0.38);
   camera.add(gun);
 
   // ---------- Enemigos (un slot visual por cada enemigo del pool) ----------
-  function humanoid() {
-    const g = new THREE.Group();
-    const skin = std(0xc49a7a, 0.7, 0, { envMapIntensity: 0.2 }), cloth = std(0x556b3a, 0.9, 0, { envMapIntensity: 0.2 });
-    const pants = std(0x2b2f3a, 0.9), eye = new THREE.MeshStandardMaterial({ color: 0, emissive: 0xff2200, emissiveIntensity: 4 });
-    const mesh = (geo, mat, x, y, z, parent = g) => {
-      const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m;
-    };
-    mesh(new THREE.CapsuleGeometry(0.22, 0.5, 6, 14), cloth, 0, 1.15, 0).scale.z = 0.7;
-    mesh(new THREE.SphereGeometry(0.16, 18, 14), skin, 0, 1.62, 0);
-    mesh(new THREE.SphereGeometry(0.025, 8, 6), eye, -0.06, 1.64, 0.14);
-    mesh(new THREE.SphereGeometry(0.025, 8, 6), eye, 0.06, 1.64, 0.14);
-    const limb = (mat, r, len, x, y, rot) => { // pivote en el hombro/cadera
-      const p = new THREE.Group(); p.position.set(x, y, 0); p.rotation.x = rot; g.add(p);
-      mesh(new THREE.CapsuleGeometry(r, len, 5, 10), mat, 0, -len / 2 - r, 0, p); return p;
-    };
-    g.userData = { armL: limb(cloth, 0.07, 0.5, -0.3, 1.42, -1.35), armR: limb(cloth, 0.07, 0.5, 0.3, 1.42, -1.35),
-      legL: limb(pants, 0.1, 0.55, -0.12, 0.86, 0), legR: limb(pants, 0.1, 0.55, 0.12, 0.86, 0), cloth, skin };
-    return g;
-  }
-
+  const lg = new THREE.CylinderGeometry(0.005, 0.005, 1, 5).rotateX(Math.PI / 2);
   const slots = [];
   for (let i = 0; i < CFG.pool; i++) {
-    const g = new THREE.Group(), s = { g, type: '', mixer: null, flash: [] };
-    if (model) { // modelo .glb externo
+    const g = new THREE.Group(), s = { g, mixer: null, flash: [], cr: 1, aim: 0, mv: 0, ph: i * 2 };
+    g.rotation.order = 'YXZ';
+    if (model) { // modelo .glb externo (sin pose procedural)
       const inner = SkeletonUtils.clone(model.scene);
       inner.scale.setScalar(model.scale); inner.position.y = model.offsetY;
       inner.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); s.flash.push(o.material); } });
@@ -129,9 +102,11 @@ export function createView(canvas, tier, model) {
         const clip = model.clips.find((c) => /run|walk/i.test(c.name)) || model.clips[0];
         const a = s.mixer.clipAction(clip); a.play(); a.time = Math.random() * clip.duration;
       }
-    } else {
-      const h = humanoid(); g.add(h); s.h = h.userData; s.flash.push(h.userData.cloth, h.userData.skin);
-    }
+    } else { const h = buildSoldier(); g.add(h); s.h = h.userData; s.flash = h.userData.flash; }
+    s.laser = new THREE.Mesh(lg, new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 0.2, 0.1), transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false }));
+    s.dot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 0.4, 0.25) }));
+    s.laser.visible = s.dot.visible = false; scene.add(s.laser, s.dot); // destello rojo en la boca del arma
     g.visible = false; scene.add(g); slots.push(s);
   }
 
@@ -163,39 +138,52 @@ export function createView(canvas, tier, model) {
 
   // ---------- Sincronización con el estado ----------
   const eu = new THREE.Euler();
+  let zk = 0; // 0 = cadera, 1 = apuntando con zoom
   const view = {
     scene, camera,
     // rp: progreso de recarga 0..1 (o -1); fx aporta retroceso y temblor.
     sync(S, time, dt, fx, rp) {
-      const p = S.player, bob = Math.sin(time * 9) * Math.min(p.speed / 6, 1);
-      const sh = fx.shake;
-      camera.position.set(p.x, CFG.eye + bob * 0.04, p.z);
-      eu.set(p.pitch + (Math.random() - 0.5) * sh * 0.03 + fx.kick * 0.012, p.yaw + (Math.random() - 0.5) * sh * 0.03, 0, 'YXZ');
+      const p = S.player, bob = Math.sin(time * 9) * Math.min(p.speed / 5, 1);
+      zk += ((S.zoom ? 1 : 0) - zk) * Math.min(1, dt * 12);
+      const f = 75 - 33 * zk;
+      if (Math.abs(camera.fov - f) > 0.05) { camera.fov = f; camera.updateProjectionMatrix(); }
+      const hurt = S.hp < S.maxHp, sway = hurt ? 0.0035 : 0.0012; // herido = puntería temblorosa
+      const dead = S.state === 'over' ? Math.min(S.deathT, 0.7) : 0;
+      camera.position.set(p.x, CFG.eye + bob * 0.035 - dead * 1.4, p.z);
+      eu.set(p.pitch + Math.sin(time * 1.7) * sway + (Math.random() - 0.5) * fx.shake * 0.03 + fx.kick * 0.02,
+        p.yaw + Math.cos(time * 1.3) * sway + (Math.random() - 0.5) * fx.shake * 0.03, dead * 0.5, 'YXZ');
       camera.rotation.copy(eu);
       const rl = rp >= 0 ? Math.sin(rp * Math.PI) : 0;
-      gun.position.set(0.2 + bob * 0.004, -0.2 + bob * 0.006 - rl * 0.12, -0.45 + fx.kick * 0.07);
-      gun.rotation.set(fx.kick * 0.1 - rl * 0.7, 0, rl * 0.4);
+      gun.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.14, -0.38 + fx.kick * 0.05 + 0.04 * zk);
+      gun.rotation.set(fx.kick * 0.22 - rl * 0.8, 0, rl * 0.5);
       lamps[1].intensity = 380 * (Math.random() < 0.03 ? 0.3 : 1); // lámpara que parpadea
       panels[1].color.setScalar(lamps[1].intensity < 380 ? 0.8 : 4);
+      const k = Math.min(1, dt * 9);
       slots.forEach((s, i) => {
         const e = S.enemies[i];
         s.g.visible = e.active;
-        if (!e.active) return;
-        if (s.type !== e.type) { // nuevo tipo: escala y color
-          s.type = e.type;
-          const T = CFG.types[e.type], sy = T.h / 1.8;
-          s.g.scale.set(sy * T.sw, sy, sy * T.sw);
-          if (s.h) s.h.cloth.color.setHex(T.tint);
-        }
+        if (!e.active) { s.laser.visible = s.dot.visible = false; return; }
         s.g.position.set(e.x, 0, e.z); s.g.rotation.y = e.face;
-        const f = e.hitT > 0 ? 0.7 : 0;
-        s.flash.forEach((m) => m.emissive.setRGB(f, f * 0.85, f * 0.7));
-        if (s.mixer) s.mixer.update(dt * (e.spd / 2.4));
-        else {
-          const ph = time * e.spd * 2.6 + i, u = s.h;
-          u.legL.rotation.x = Math.sin(ph) * 0.7; u.legR.rotation.x = -Math.sin(ph) * 0.7;
-          u.armL.rotation.x = -1.35 + Math.sin(ph + 1) * 0.18; u.armR.rotation.x = -1.35 - Math.sin(ph + 1) * 0.18;
-          s.g.position.y = Math.abs(Math.sin(ph)) * 0.05;
+        s.g.rotation.x = e.alive ? 0 : -Math.min(1, e.deadT / 0.45) * 1.5; // cae hacia atrás al morir
+        s.cr += ((e.crouch && e.alive ? 1 : 0) - s.cr) * k;
+        s.aim += ((e.aiming && e.alive ? 1 : 0) - s.aim) * k;
+        s.mv += ((e.moving && e.alive ? 1 : 0) - s.mv) * k;
+        s.ph += dt * e.spd * 2.8 * s.mv;
+        const fl = e.hitT > 0 && e.alive ? 0.5 : 0;
+        s.flash.forEach((m) => m.emissive.setRGB(fl, fl * 0.8, fl * 0.7));
+        if (s.h) {
+          s.h.helmet.visible = e.helmet;
+          poseSoldier(s.h, { ph: s.ph, crouch: s.cr, aim: s.aim, move: s.mv, flinch: e.hitT > 0 && e.alive ? 1 : 0 });
+        } else if (s.mixer) s.mixer.update(dt * s.mv);
+        // láser rojo: avisa de que te está apuntando (más intenso cuanto más cerca del disparo)
+        const L = s.laser, show = e.alive && e.aiming && e.sees;
+        L.visible = s.dot.visible = show;
+        if (show) {
+          const gx = e.x + Math.sin(e.face) * 0.6, gz = e.z + Math.cos(e.face) * 0.6;
+          const dx = p.x - gx, dy = CFG.eye - 1.5, dz = p.z - gz, d = Math.hypot(dx, dy, dz);
+          L.position.set(gx + dx / 2, 1.5 + dy / 2, gz + dz / 2); L.scale.z = d; L.lookAt(p.x, CFG.eye, p.z);
+          L.material.opacity = 0.25 + 0.75 * e.aimK;
+          s.dot.position.set(gx, 1.5, gz); s.dot.scale.setScalar(0.5 + 1.8 * e.aimK);
         }
       });
     },

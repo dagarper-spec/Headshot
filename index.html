@@ -28,14 +28,14 @@
 <div id="touch" class="hide">
   <div class="pad" id="sL"><i></i></div>
   <div class="pad" id="sR"><i></i></div>
-  <div class="btn" id="bFireL">FUEGO</div>
+  <div class="btn" id="bZoom">MIRA</div>
   <div class="btn" id="bFire">FUEGO</div>
   <div class="btn" id="bRel">R</div>
 </div>
 
 <div id="menu" class="ov">
   <h1 id="mtitle">HEADSHOT</h1>
-  <p class="sub">Sobrevive a las oleadas en el almacén</p>
+  <p class="sub">Duelo táctico en el almacén: una cabeza decide</p>
   <p id="best" class="best"></p>
   <button id="start" class="big" disabled>Cargando…</button>
   <label class="q">Calidad
@@ -44,18 +44,13 @@
       <option value="medium">Media</option><option value="low">Baja</option>
     </select>
   </label>
-  <label class="q"><input type="checkbox" id="auto"> Disparo automático al apuntar (móvil)</label>
-  <p class="help">PC: WASD mover · ratón (o Q/E y flechas) girar · clic disparar · R recargar · Esc pausa<br>
-  Móvil: ruleta izquierda mover · ruleta derecha mirar (empújala al máximo para girar más rápido) · botones FUEGO</p>
-</div>
-
-<div id="upg" class="ov hide">
-  <h2>Elige una mejora</h2>
-  <div id="cards"></div>
+  <p class="help">Dos vidas: un tiro al cuerpo te hiere, a la cabeza te mata (igual que a ellos; el casco aguanta un tiro en la cabeza). Un láser rojo avisa de que te apuntan. Pistola de 6 balas.<br>
+  PC: WASD mover · ratón girar (Q/E o flechas) · clic disparar · clic derecho zoom · R recargar · Esc pausa<br>
+  Móvil: ruleta izquierda mover · ruleta derecha mirar · FUEGO disparar · MIRA zoom</p>
 </div>
 
 <div id="over" class="ov hide">
-  <h1>HAS CAÍDO</h1>
+  <h1 id="ot">HAS CAÍDO</h1>
   <p id="ostats" class="sub"></p>
   <button id="again" class="big">Jugar de nuevo</button>
 </div>

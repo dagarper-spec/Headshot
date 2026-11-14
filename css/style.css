@@ -13,7 +13,7 @@ html,body{height:100%;overflow:hidden;background:#000;color:#e8e6e1;touch-action
 #hpt{position:relative;display:block;text-align:center;font-size:14px;line-height:20px}
 #wv{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:15px;color:#ffb347;text-shadow:0 0 8px #ff7a0066}
 #sc{position:absolute;right:max(16px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));text-align:right}
-#score{font-size:26px}
+#score{font-size:24px}
 #combo{display:block;color:#ffb347;font-size:20px;min-height:22px}
 #ammo{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));text-align:right}
 #mag{font-size:44px;line-height:1}
@@ -43,7 +43,8 @@ html,body{height:100%;overflow:hidden;background:#000;color:#e8e6e1;touch-action
 .btn{position:absolute;pointer-events:auto;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:#c0392b99;border:2px solid #fff6;font-size:15px}
 #bFire{right:max(34px,calc(env(safe-area-inset-right) + 30px));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px);width:84px;height:84px}
-#bFireL{left:max(34px,calc(env(safe-area-inset-left) + 30px));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px);width:84px;height:84px}
+#bZoom{left:max(34px,calc(env(safe-area-inset-left) + 30px));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px);width:84px;height:84px;background:#2c3e5099}
+#bZoom.on{background:#2980b9cc}
 #bRel{right:max(160px,calc(env(safe-area-inset-right) + 156px));bottom:max(40px,env(safe-area-inset-bottom));width:56px;height:56px;background:#34495e99}
 
 /* Pantallas */
@@ -63,6 +64,7 @@ html,body{height:100%;overflow:hidden;background:#000;color:#e8e6e1;touch-action
 .q{color:#aaa;font-size:14px}
 .q select{font:inherit;color:#fff;background:#222;border:1px solid #555;padding:4px 8px;margin-left:8px}
 #cards{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.ov h1.win{color:#6fdc8c;text-shadow:0 0 30px #2ecc7188}
 .card{font:inherit;color:#eee;width:200px;padding:18px 14px;background:#161a20;border:1px solid #ffb34766;border-radius:6px;
   cursor:pointer;display:flex;flex-direction:column;gap:8px}
 .card b{color:#ffb347;font-size:18px}

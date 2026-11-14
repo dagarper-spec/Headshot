@@ -1,5 +1,5 @@
 // Entrada unificada: teclado + ratón (pointer lock) en escritorio, joystick + arrastre táctil en móvil.
-export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false };
+export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false, zoom: false };
 
 const keys = {};
 const pads = { L: { id: -1, x: 0, y: 0, el: null }, R: { id: -1, x: 0, y: 0, el: null } }; // ruletas táctiles
@@ -23,9 +23,12 @@ export function initInput(canvas) {
   });
   document.addEventListener('pointerlockerror', () => { input.noLock = true; });
   document.addEventListener('mousedown', (e) => {
-    if (e.button === 0 && (document.pointerLockElement === canvas || input.noLock)) input.fire = true;
+    const ok = document.pointerLockElement === canvas || input.noLock;
+    if (e.button === 0 && ok) input.fire = true;
+    if (e.button === 2 && ok) input.zoom = true; // botón derecho: apuntar con zoom
   });
-  addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; });
+  addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; if (e.button === 2) input.zoom = false; });
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
 
   if (!input.touch) return;
   pads.L.el = $('sL'); pads.R.el = $('sR');
@@ -60,7 +63,8 @@ export function initInput(canvas) {
     ['touchend', 'touchcancel'].forEach((n) => el.addEventListener(n, (e) => { e.preventDefault(); off(); }));
   };
   const fireOn = () => { input.fire = true; }, fireOff = () => { input.fire = false; };
-  hold($('bFire'), fireOn, fireOff); hold($('bFireL'), fireOn, fireOff);
+  hold($('bFire'), fireOn, fireOff);
+  hold($('bZoom'), () => { input.zoom = !input.zoom; $('bZoom').classList.toggle('on', input.zoom); }, () => {});
   hold($('bRel'), () => { input.reload = true; }, () => {});
 }
 

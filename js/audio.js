@@ -41,6 +41,7 @@ function noise(dur, vol, f0, f1) {
 
 export const sfx = {
   shot() { noise(0.14, 0.9, 4000, 250); tone(150, 45, 0.12, 'sine', 0.8); },
+  eshot() { noise(0.12, 0.55, 3000, 300); tone(110, 50, 0.1, 'sine', 0.5); },
   hit() { tone(700, 300, 0.05, 'square', 0.12); },
   head() { tone(1700, 800, 0.09, 'triangle', 0.3); tone(500, 200, 0.1, 'square', 0.1); },
   kill() { noise(0.28, 0.45, 1100, 90); tone(220, 60, 0.28, 'sawtooth', 0.2); },
