@@ -74,7 +74,15 @@ async function boot() {
   $('start').onclick = () => begin(data.level);
   $('again').onclick = () => begin(S.state === 'win' ? S.level + 1 : S.level); // victoria -> siguiente; derrota -> reintentar
   addEventListener('keydown', (e) => { if (e.code === 'Enter' && !$('over').classList.contains('hide')) $('again').click(); });
-  const pause = () => { if (S.state === 'play') { S.state = 'pause'; input.fire = false; input.zoom = false; ui.menu('PAUSA', 'Continuar', note()); } };
+  const pause = () => {
+    if (S.state !== 'play') return;
+    S.state = 'pause'; input.fire = false; input.zoom = false;
+    if (document.pointerLockElement) document.exitPointerLock();
+    ui.menu('PAUSA', 'Continuar', note(), true);
+  };
+  $('bPause').onclick = pause;
+  $('restart').onclick = () => { S.state = 'menu'; begin(S.level); }; // reinicia el nivel actual
+  addEventListener('keydown', (e) => { if (e.code === 'KeyP') pause(); });
   document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && !input.touch) pause(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
   ui.menu('HEADSHOT', 'Jugar', note());

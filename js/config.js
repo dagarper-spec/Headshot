@@ -27,11 +27,11 @@ export const QUALITY = {
 };
 export const TIERS = ['low', 'medium', 'high'];
 
-// Niveles: enemigos (el casco aguanta 1 tiro a la cabeza) y dificultad.
-// aim = segundos que apunta antes de disparar (con láser rojo), react = reacción al verte,
-// acc = precisión base, hide = [mín, máx] segundos escondido.
+// Niveles: un solo soldado por nivel (el casco aguanta 1 tiro a la cabeza).
+// aim = segundos que apunta antes de disparar (con aviso rojo), react = reacción al verte,
+// acc = precisión base, burst = probabilidad de disparar 2 veces seguidas, hide = [mín, máx] segundos escondido.
 export const LEVELS = [
-  { name: 'Primer duelo', enemies: [{ x: -9, z: -11, helmet: false }], aim: 0.9, react: 0.5, acc: 0.42, hide: [1.6, 3.0] },
-  { name: 'Casco de acero', enemies: [{ x: 9, z: -11, helmet: true }], aim: 0.75, react: 0.4, acc: 0.5, hide: [1.3, 2.6] },
-  { name: 'Dos contra uno', enemies: [{ x: -9, z: -11, helmet: false }, { x: 9, z: -11, helmet: true }], aim: 0.7, react: 0.38, acc: 0.5, hide: [1.2, 2.4] },
+  { name: 'Primer duelo',    enemies: [{ x: -9, z: -11, helmet: false }], aim: 1.3, react: 0.8, acc: 0.25, burst: 0,    hide: [2.4, 4.2] },
+  { name: 'Casco de acero',  enemies: [{ x: 9, z: -11, helmet: true }],   aim: 1.1, react: 0.6, acc: 0.32, burst: 0.15, hide: [2.0, 3.6] },
+  { name: 'Francotirador',   enemies: [{ x: -9, z: -11, helmet: true }],  aim: 0.9, react: 0.5, acc: 0.4,  burst: 0.3,  hide: [1.6, 3.0] },
 ];

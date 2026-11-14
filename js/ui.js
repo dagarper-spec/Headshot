@@ -27,7 +27,8 @@ export const ui = {
   },
   hurt() { ui.flashClass('vig', 'on', 320); },
   banner(text, ms = 1800) { $('ban').textContent = text; ui.flashClass('ban', 'on', ms); },
-  menu(title, btn, note) {
+  menu(title, btn, note, paused) {
+    $('restart').classList[paused ? 'remove' : 'add']('hide');
     $('mtitle').textContent = title; $('start').textContent = btn; $('start').disabled = false;
     $('best').textContent = note || '';
     ui.show('menu');

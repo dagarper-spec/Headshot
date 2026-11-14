@@ -34,7 +34,7 @@ const lvl = () => LEVELS[S.level];
 export function startLevel(i) {
   S.level = i % LEVELS.length;
   const lv = lvl();
-  Object.assign(S, { t: 0, grace: 1.8, deathT: 0, hp: CFG.player.hp, maxHp: CFG.player.hp, mag: CFG.weapon.mag,
+  Object.assign(S, { t: 0, grace: 3, deathT: 0, hp: CFG.player.hp, maxHp: CFG.player.hp, mag: CFG.weapon.mag,
     reloading: false, fireT: 0, latch: false, zoom: false, state: 'play' });
   Object.assign(S.player, { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 });
   S.enemies.forEach((e) => { e.active = false; e.alive = false; });
@@ -136,7 +136,7 @@ function retreat(e) {
 function beginAim(e) {
   const lv = lvl();
   e.state = 'aim'; e.crouch = false; e.moving = false; e.aiming = true;
-  e.aimT = e.aimDur = lv.aim; e.shots = Math.random() < 0.45 ? 2 : 1; e.lost = 0;
+  e.aimT = e.aimDur = lv.aim; e.shots = Math.random() < lv.burst ? 2 : 1; e.lost = 0;
 }
 
 function turn(e, target, dt) { // giro suave hacia un ángulo
