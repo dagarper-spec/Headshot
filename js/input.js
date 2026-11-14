@@ -1,5 +1,5 @@
 // Entrada unificada: teclado + ratón (pointer lock) en escritorio, joystick + arrastre táctil en móvil.
-export const input = { mx: 0, mz: 0, dx: 0, dy: 0, fire: false, reload: false, touch: false };
+export const input = { mx: 0, mz: 0, dx: 0, dy: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false };
 
 const keys = {};
 const stick = { id: -1, ox: 0, oy: 0, x: 0, z: 0 };
@@ -7,7 +7,7 @@ const look = { id: -1, x: 0, y: 0 };
 const $ = (id) => document.getElementById(id);
 
 export function initInput(canvas) {
-  input.touch = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
+  input.touch = matchMedia('(pointer:coarse)').matches; // solo si el puntero principal es táctil
 
   addEventListener('keydown', (e) => {
     keys[e.code] = true;
@@ -18,10 +18,12 @@ export function initInput(canvas) {
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; input.fire = false; });
 
   document.addEventListener('mousemove', (e) => {
-    if (document.pointerLockElement === canvas) { input.dx += e.movementX; input.dy += e.movementY; }
+    // con pointer lock siempre; si el navegador lo bloquea, mirar arrastrando con el botón pulsado
+    if (document.pointerLockElement === canvas || (input.noLock && e.buttons)) { input.dx += e.movementX; input.dy += e.movementY; }
   });
+  document.addEventListener('pointerlockerror', () => { input.noLock = true; });
   document.addEventListener('mousedown', (e) => {
-    if (e.button === 0 && document.pointerLockElement === canvas) input.fire = true;
+    if (e.button === 0 && (document.pointerLockElement === canvas || input.noLock)) input.fire = true;
   });
   addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; });
 
@@ -73,7 +75,8 @@ export function initInput(canvas) {
 
 // Combina teclado y joystick en los ejes de movimiento.
 export function poll() {
-  const kx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+  const kx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  input.turn = (keys.ArrowLeft || keys.KeyQ ? 1 : 0) - (keys.ArrowRight || keys.KeyE ? 1 : 0); // giro con teclado
   const kz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
   input.mx = Math.max(-1, Math.min(1, kx + stick.x));
   input.mz = Math.max(-1, Math.min(1, kz + stick.z));

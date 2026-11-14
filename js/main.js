@@ -94,8 +94,8 @@ async function boot() {
     const dt = Math.min((now - prev) / 1000, 0.05); // limitar saltos (pestaña en segundo plano)
     prev = now;
     if (S.state === 'play') {
-      core.look(input.dx, input.dy);
       poll();
+      core.look(input.dx - (input.turn * 2.4 * dt) / CFG.player.sens, input.dy);
       core.update(dt, input);
       if (input.reload) reload();
       updateCombat(dt, input.fire);
