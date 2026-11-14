@@ -27,7 +27,10 @@ let tier = data.quality === 'auto' ? autoTier() : data.quality;
 
 async function boot() {
   const model = await loadModel(CFG.models.enemy);
-  const view = createView(canvas, tier, model);
+  let view;
+  try { view = createView(canvas, tier, model); } catch (e) { // si el render avanzado falla, reintentar en calidad baja
+    console.warn('createView falló, reintento en baja', e); tier = 'low'; view = createView(canvas, 'low', model);
+  }
   const fx = createFx(view.scene, view.camera);
 
   // ----- Eventos de la lógica -> efectos, sonido y UI -----
@@ -71,7 +74,7 @@ async function boot() {
   const chk = $('auto'); chk.checked = data.auto;
   chk.onchange = () => { data.auto = chk.checked; writeSave(data); };
   const begin = () => {
-    initAudio();
+    try { initAudio(); } catch { /* sin audio */ }
     if (!input.touch) canvas.requestPointerLock();
     ui.hide('menu'); ui.hide('over'); ui.show('hud');
     if (input.touch) ui.show('touch');

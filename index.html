@@ -37,7 +37,7 @@
   <h1 id="mtitle">HEADSHOT</h1>
   <p class="sub">Sobrevive a las oleadas en el almacén</p>
   <p id="best" class="best"></p>
-  <button id="start" class="big">Jugar</button>
+  <button id="start" class="big" disabled>Cargando…</button>
   <label class="q">Calidad
     <select id="quality">
       <option value="auto">Auto</option><option value="high">Alta</option>
@@ -60,6 +60,17 @@
   <button id="again" class="big">Jugar de nuevo</button>
 </div>
 
+<script>
+/* Aviso si el juego no llega a cargar (módulos bloqueados, sin conexión, abierto como archivo...) */
+(function () {
+  function show(m) { var p = document.createElement('p'); p.className = 'err'; p.textContent = m; document.getElementById('menu').appendChild(p); }
+  addEventListener('error', function (e) { show('Error: ' + (e.message || 'al cargar')); });
+  addEventListener('unhandledrejection', function (e) { show('Error: ' + ((e.reason && e.reason.message) || e.reason)); });
+  setTimeout(function () {
+    if (document.getElementById('start').disabled) show('No se ha podido cargar el juego. Ábrelo desde su dirección web (no como archivo) y comprueba tu conexión.');
+  }, 7000);
+})();
+</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

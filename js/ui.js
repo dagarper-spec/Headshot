@@ -28,7 +28,7 @@ export const ui = {
   hurt() { ui.flashClass('vig', 'on', 280); },
   banner(text, ms = 1800) { $('ban').textContent = text; ui.flashClass('ban', 'on', ms); },
   menu(title, btn, best) {
-    $('mtitle').textContent = title; $('start').textContent = btn;
+    $('mtitle').textContent = title; $('start').textContent = btn; $('start').disabled = false;
     $('best').textContent = best ? 'Récord: ' + best.score.toLocaleString('es-ES') + ' pts · oleada ' + best.wave : '';
     ui.show('menu');
   },
