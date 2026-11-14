@@ -1,1 +1,4 @@
-Pon aquí enemy.glb (modelo humanoide, ~1.8 m, mirando a +Z). Si no existe, se usa el enemigo procedural.
+Modelos del juego.
+- ybot.fbx + idle/walk/run/gunplay/hide/death.fbx: soldado animado (Mixamo). Se cargan solos al abrir el juego.
+- enemy.glb (opcional): otro modelo; solo se usa si no están los FBX de arriba.
+Si ninguno existe, el juego usa el soldado procedural.

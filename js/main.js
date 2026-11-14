@@ -2,7 +2,7 @@
 import { CFG, TIERS, LEVELS } from './config.js';
 import * as core from './game-core.js';
 import { stats, reload, updateCombat, aimAssist } from './game-combat.js';
-import { loadModel } from './loader.js';
+import { loadModel, loadMixamo } from './loader.js';
 import { createView } from './view-scene.js';
 import { createFx } from './view-fx.js';
 import { input, initInput, poll } from './input.js';
@@ -27,7 +27,7 @@ function autoTier() {
 let tier = data.quality === 'auto' ? autoTier() : data.quality;
 
 async function boot() {
-  const model = await loadModel(CFG.models.enemy);
+  const model = (await loadMixamo(CFG.models.dir)) || (await loadModel(CFG.models.enemy)); // Mixamo > .glb > procedural
   let view;
   try { view = createView(canvas, tier, model); } catch (e) { // si el render avanzado falla, reintentar en calidad baja
     console.warn('createView falló, reintento en baja', e); tier = 'low'; view = createView(canvas, 'low', model);
@@ -41,8 +41,9 @@ async function boot() {
     if (!d.hit) fx.burst(...d.end, 2.4, 1.6, 0.6, 7, 3.5); // chispas en la pared/caja
   });
   on('enemyShot', (d) => {
-    sfx.eshot(); fx.shoot(d.end, d.from);
-    fx.burst(...d.from, 3, 2, 0.8, 6, 2);
+    const from = view.gunPos(d.e.id) || d.from; view.fire(d.e.id);
+    sfx.eshot(); fx.shoot(d.end, from);
+    fx.burst(...from, 3, 2, 0.8, 6, 2);
     if (!d.hit) fx.burst(...d.end, 2.4, 1.6, 0.6, 6, 3);
   });
   on('hit', (d) => { sfx.hit(); ui.hitmarker(false, false); fx.burst(...d.pt, 1.6, 0.1, 0.05, 12, 3); });

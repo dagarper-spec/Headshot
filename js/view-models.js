@@ -4,11 +4,11 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { camoTexture, webbingTexture } from './view-textures.js';
 
-const rb = (w, h, d, r = 0.03) => new RoundedBoxGeometry(w, h, d, 3, r);
-const mat = (color, rough = 0.9, metal = 0, env = 0.3) =>
+export const rb = (w, h, d, r = 0.03) => new RoundedBoxGeometry(w, h, d, 3, r);
+export const mat = (color, rough = 0.9, metal = 0, env = 0.3) =>
   new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, envMapIntensity: env });
 
-function put(parent, geo, m, x = 0, y = 0, z = 0) {
+export function put(parent, geo, m, x = 0, y = 0, z = 0) {
   const o = new THREE.Mesh(geo, m);
   o.position.set(x, y, z); o.castShadow = true; parent.add(o); return o;
 }

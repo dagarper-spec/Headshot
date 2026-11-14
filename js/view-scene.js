@@ -12,6 +12,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { CFG, QUALITY } from './config.js';
 import { makeMaterials, uvs } from './view-textures.js';
 import { buildSoldier, buildViewPistol, poseSoldier } from './view-models.js';
+import { createMixamoSoldier } from './view-mixamo.js';
 
 const std = (color, rough, metal = 0, extra = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, envMapIntensity: 0.5, ...extra });
@@ -92,7 +93,8 @@ export function createView(canvas, tier, model) {
   for (let i = 0; i < CFG.pool; i++) {
     const g = new THREE.Group(), s = { g, mixer: null, flash: [], cr: 1, aim: 0, mv: 0, ph: i * 2 };
     g.rotation.order = 'YXZ';
-    if (model) { // modelo .glb externo (sin pose procedural)
+    if (model && model.mixamo) { s.mx = createMixamoSoldier(model); g.add(s.mx.root); s.flash = s.mx.flash; } // Y Bot + animaciones Mixamo
+    else if (model) { // modelo .glb externo (sin pose procedural)
       const inner = SkeletonUtils.clone(model.scene);
       inner.scale.setScalar(model.scale); inner.position.y = model.offsetY;
       inner.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); s.flash.push(o.material); } });
@@ -164,14 +166,15 @@ export function createView(canvas, tier, model) {
         s.g.visible = e.active;
         if (!e.active) { s.laser.visible = s.dot.visible = false; return; }
         s.g.position.set(e.x, 0, e.z); s.g.rotation.y = e.face;
-        s.g.rotation.x = e.alive ? 0 : -Math.min(1, e.deadT / 0.45) * 1.5; // cae hacia atrás al morir
+        s.g.rotation.x = e.alive || s.mx ? 0 : -Math.min(1, e.deadT / 0.45) * 1.5; // cae hacia atrás al morir
         s.cr += ((e.crouch && e.alive ? 1 : 0) - s.cr) * k;
         s.aim += ((e.aiming && e.alive ? 1 : 0) - s.aim) * k;
         s.mv += ((e.moving && e.alive ? 1 : 0) - s.mv) * k;
         s.ph += dt * e.spd * 2.8 * s.mv;
         const fl = e.hitT > 0 && e.alive ? 0.5 : 0;
         s.flash.forEach((m) => m.emissive.setRGB(fl, fl * 0.8, fl * 0.7));
-        if (s.h) {
+        if (s.mx) s.mx.update(e, dt);
+        else if (s.h) {
           s.h.helmet.visible = e.helmet;
           poseSoldier(s.h, { ph: s.ph, crouch: s.cr, aim: s.aim, move: s.mv, flinch: e.hitT > 0 && e.alive ? 1 : 0 });
         } else if (s.mixer) s.mixer.update(dt * s.mv);
@@ -179,14 +182,17 @@ export function createView(canvas, tier, model) {
         const L = s.laser, show = e.alive && e.aiming && e.sees;
         L.visible = s.dot.visible = show;
         if (show) {
-          const gx = e.x + Math.sin(e.face) * 0.6, gz = e.z + Math.cos(e.face) * 0.6;
-          const dx = p.x - gx, dy = CFG.eye - 1.5, dz = p.z - gz, d = Math.hypot(dx, dy, dz);
-          L.position.set(gx + dx / 2, 1.5 + dy / 2, gz + dz / 2); L.scale.z = d; L.lookAt(p.x, CFG.eye, p.z);
+          const gp = view.gunPos(i) || [e.x + Math.sin(e.face) * 0.6, 1.5, e.z + Math.cos(e.face) * 0.6];
+          const dx = p.x - gp[0], dy = CFG.eye - gp[1], dz = p.z - gp[2], d = Math.hypot(dx, dy, dz);
+          L.position.set(gp[0] + dx / 2, gp[1] + dy / 2, gp[2] + dz / 2); L.scale.z = d; L.lookAt(p.x, CFG.eye, p.z);
           L.material.opacity = 0.25 + 0.75 * e.aimK;
-          s.dot.position.set(gx, 1.5, gz); s.dot.scale.setScalar(0.5 + 1.8 * e.aimK);
+          s.dot.position.set(gp[0], gp[1], gp[2]); s.dot.scale.setScalar(0.5 + 1.8 * e.aimK);
         }
       });
     },
+    // Posición en el mundo de la boca del arma del enemigo i (solo con modelo Mixamo).
+    gunPos(i) { const m = slots[i].mx; if (!m) return null; const v = m.muzzle.getWorldPosition(new THREE.Vector3()); return [v.x, v.y, v.z]; },
+    fire(i) { if (slots[i].mx) slots[i].mx.fire(); },
     render() { if (q.bloom || q.fxaa) composer.render(); else renderer.render(scene, camera); },
     setQuality, resize,
   };

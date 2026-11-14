@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
 let loader;
 function getLoader() {
@@ -27,6 +28,26 @@ export async function loadModel(url, height = 1.8) {
     return { scene: gltf.scene, clips: gltf.animations || [], scale: k, offsetY: -box.min.y * k };
   } catch {
     console.info('[loader] sin modelo en ' + url + ', se usa el procedural');
+    return null;
+  }
+}
+
+// Mixamo: personaje "Y Bot" + animaciones sin skin (todas comparten el esqueleto mixamorig).
+const ANIMS = { idle: 'idle', walk: 'walk', run: 'run', aim: 'gunplay', hide: 'hide', death: 'death' };
+export async function loadMixamo(dir) {
+  try {
+    const L = new FBXLoader();
+    const [body, ...files] = await Promise.all([L.loadAsync(dir + 'ybot.fbx'), ...Object.values(ANIMS).map((f) => L.loadAsync(dir + f + '.fbx'))]);
+    const clips = {};
+    Object.keys(ANIMS).forEach((k, i) => {
+      const c = files[i].animations[0]; c.name = k;
+      if (k === 'walk' || k === 'run') // quitar el movimiento incorporado: el desplazamiento lo manda la lógica del juego
+        c.tracks.forEach((t) => { if (/Hips\.position$/.test(t.name)) for (let j = 2; j < t.values.length; j += 3) t.values[j] = t.values[2]; });
+      clips[k] = c;
+    });
+    return { mixamo: true, scene: body, clips };
+  } catch (e) {
+    console.info('[loader] sin animaciones Mixamo: ' + (e.message || e));
     return null;
   }
 }

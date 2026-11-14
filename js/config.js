@@ -6,7 +6,8 @@ export const CFG = {
   pool: 3,           // Object Pool de enemigos (máximo por nivel)
   player: { speed: 5, radius: 0.4, hp: 2, sens: 0.0022 }, // 2 vidas: cuerpo = -1, cabeza = muerte
   weapon: { rate: 0.24, mag: 6, reload: 1.5, range: 60 }, // pistola semiautomática de 6 balas
-  enemy: { speed: 3.4, r: 0.3, h: 1.8, hCrouch: 1.38 },
+  // walk/run = velocidades (m/s) que coinciden con las animaciones Mixamo de caminar y correr
+  enemy: { speed: 3.4, walk: 1.8, run: 4.6, r: 0.3, h: 1.8, hAim: 1.62, hCrouch: 1.38 },
   // Obstáculos [x, z, ancho, fondo, alto]. Alto == height -> pilar de hormigón.
   crates: [
     [-7, -6, 2, 2, 1.6], [-4.5, -6.5, 1.4, 1.4, 1.4], [7, 5, 2.4, 2, 2],
@@ -15,7 +16,7 @@ export const CFG = {
     [-9, -9, 1, 1, 7.5], [9, -9, 1, 1, 7.5], [-9, 9, 1, 1, 7.5], [9, 9, 1, 1, 7.5],
   ],
   // Modelos .glb opcionales. Si el archivo no existe se usa el soldado procedural.
-  models: { enemy: 'assets/models/enemy.glb' },
+  models: { enemy: 'assets/models/enemy.glb', dir: 'assets/models/' },
 };
 
 // msaa = muestras del antialiasing por hardware en el EffectComposer.

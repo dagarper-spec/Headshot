@@ -17,7 +17,7 @@ export const S = {
 for (let i = 0; i < CFG.pool; i++) {
   S.enemies.push({ id: i, active: false, alive: false, x: 0, z: 0, hp: 2, helmet: false, crouch: true, state: 'hide',
     next: 'hide', timer: 0, react: 0, aimT: 0, aimK: 0, shots: 0, aiming: false, moving: false, sees: false, hitT: 0,
-    face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: 3, r: 0.3, h: 1.38, deadT: 0, acc: 0.4 });
+    face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: 3, sp: 0, r: 0.3, h: 1.38, deadT: 0, acc: 0.4 });
 }
 
 // Puntos de cobertura precalculados alrededor de cada caja/pilar.
@@ -152,7 +152,7 @@ function updateEnemies(dt) {
     if (!e.active) continue;
     if (!e.alive) { e.deadT += dt; if (e.deadT > 3) e.active = false; continue; }
     e.hitT -= dt; e.timer -= dt;
-    e.h = e.crouch ? CFG.enemy.hCrouch : CFG.enemy.h;
+    e.h = e.crouch ? CFG.enemy.hCrouch : e.aiming ? CFG.enemy.hAim : CFG.enemy.h;
     e.sees = !blocked(e.x, e.crouch ? 1.25 : 1.65, e.z, p.x, CFG.eye, p.z);
     const toP = Math.atan2(p.x - e.x, p.z - e.z);
     if (e.state === 'hide') {
@@ -166,13 +166,14 @@ function updateEnemies(dt) {
     } else if (e.state === 'move') {
       const gx = e.goal.x - e.x, gz = e.goal.z - e.z, gd = Math.hypot(gx, gz);
       e.moveT += dt; e.crouch = false; e.moving = true;
+      e.sp = (e.next === 'aim' ? CFG.enemy.walk : CFG.enemy.run) * (e.spd / CFG.enemy.speed); // asoma andando, huye corriendo
       if (gd < 0.2 || e.moveT > 4.5) {
         e.moving = false;
         if (e.next === 'aim') beginAim(e);
         else { e.state = 'hide'; e.crouch = true; e.timer = lv.hide[0] + Math.random() * (lv.hide[1] - lv.hide[0]); e.react = lv.react; }
       } else {
         turn(e, Math.atan2(gx, gz), dt);
-        const st = Math.min(gd, e.spd * dt), ox = e.x, oz = e.z;
+        const st = Math.min(gd, e.sp * dt), ox = e.x, oz = e.z;
         e.x += (gx / gd) * st; e.z += (gz / gd) * st;
         resolve(e, e.r);
         if (Math.hypot(e.x - ox, e.z - oz) < st * 0.4) { e.x += (-gz / gd) * st; e.z += (gx / gd) * st; resolve(e, e.r); } // rodear obstáculo

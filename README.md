@@ -8,7 +8,7 @@ Un almacén, una pistola de 6 balas y enemigos que se esconden, asoman y te apun
 ## Estructura
 - `js/game-core.js`, `game-combat.js`, `game-geom.js`: lógica pura (sin render). IA con coberturas, Delta Time, Object Pool.
 - `js/view-scene.js`, `view-models.js` (soldado y pistola), `view-textures.js`, `view-fx.js`: render PBR, EffectComposer (Bloom, MSAA, FXAA, ACES) y efectos con pooling.
-- `js/loader.js`: GLTFLoader (+Draco). Coloca `assets/models/enemy.glb` para usar un modelo externo.
+- `js/loader.js` y `view-mixamo.js`: carga de Y Bot + animaciones Mixamo (FBXLoader, AnimationMixer con transiciones). También GLTFLoader (+Draco) para `enemy.glb` opcional.
 - `js/config.js`: mapa, niveles y dificultad de calidad (baja/media/alta, ajuste automático por FPS).
 
 ## Ejecutar
