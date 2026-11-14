@@ -85,6 +85,30 @@ function roughMap(g, s) { // gris alto = rugoso; manchas oscuras = zonas satinad
   grain(g, s, 40);
 }
 
+function camo(g, s) { // camuflaje boscoso en manchas
+  g.fillStyle = '#4a5136'; g.fillRect(0, 0, s, s);
+  const cols = ['#394028', '#5e5b3b', '#242a1c', '#6d6c49'];
+  for (let i = 0; i < 90; i++) {
+    g.fillStyle = cols[i % 4]; g.beginPath();
+    const r = s * (0.035 + rnd() * 0.08);
+    g.ellipse(rnd() * s, rnd() * s, r * 1.7, r, rnd() * 3, 0, 7); g.fill();
+  }
+  grain(g, s, 30);
+  g.strokeStyle = 'rgba(0,0,0,.12)'; g.lineWidth = 1; // trama del tejido
+  for (let i = 0; i < s; i += 3) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, s); g.stroke(); }
+}
+
+function webbing(g, s) { // chaleco con correaje MOLLE
+  g.fillStyle = '#2a2f27'; g.fillRect(0, 0, s, s);
+  g.fillStyle = '#1b1f19';
+  for (let y = 6; y < s; y += 16) for (let x = 4; x < s; x += 22) g.fillRect(x, y, 16, 4);
+  g.fillStyle = 'rgba(0,0,0,.25)'; for (let y = 0; y < s; y += 16) g.fillRect(0, y + 10, s, 2);
+  grain(g, s, 26);
+}
+
+export const camoTexture = () => canvasTex(256, camo);
+export const webbingTexture = () => canvasTex(256, webbing);
+
 export function makeMaterials(size) {
   const std = (o) => new THREE.MeshStandardMaterial({ envMapIntensity: 0.3, ...o });
   const conc = canvasTex(size, concrete), metal = canvasTex(size, corrugated), box = canvasTex(size, wood);
