@@ -71,21 +71,27 @@ async function boot() {
     if (input.touch) ui.show('touch');
     if (S.state === 'pause') S.state = 'play'; else core.startLevel(lvl);
   };
-  $('start').onclick = () => begin(data.level);
+  $('start').onclick = () => begin(0); // Jugar: siempre desde el nivel 1 (o continúa si está en pausa)
+  $('cont').onclick = () => begin(data.level);
+  // El botón "Continuar: nivel N" solo aparece si ya superaste algún nivel y no estás en pausa.
+  const syncCont = (paused) => {
+    const c = $('cont'); c.textContent = 'Continuar: nivel ' + (data.level + 1);
+    c.classList[!paused && data.level > 0 ? 'remove' : 'add']('hide');
+  };
   $('again').onclick = () => begin(S.state === 'win' ? S.level + 1 : S.level); // victoria -> siguiente; derrota -> reintentar
   addEventListener('keydown', (e) => { if (e.code === 'Enter' && !$('over').classList.contains('hide')) $('again').click(); });
   const pause = () => {
     if (S.state !== 'play') return;
     S.state = 'pause'; input.fire = false; input.zoom = false;
     if (document.pointerLockElement) document.exitPointerLock();
-    ui.menu('PAUSA', 'Continuar', note(), true);
+    ui.menu('PAUSA', 'Continuar', note(), true); syncCont(true);
   };
   $('bPause').onclick = pause;
   $('restart').onclick = () => { S.state = 'menu'; begin(S.level); }; // reinicia el nivel actual
   addEventListener('keydown', (e) => { if (e.code === 'KeyP') pause(); });
   document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && !input.touch) pause(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
-  ui.menu('HEADSHOT', 'Jugar', note());
+  ui.menu('HEADSHOT', 'Jugar', ''); syncCont(false);
 
   // ----- Bucle principal con Delta Time -----
   let prev = performance.now(), acc = 0, frames = 0, warm = 2;

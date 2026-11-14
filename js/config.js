@@ -32,6 +32,6 @@ export const TIERS = ['low', 'medium', 'high'];
 // acc = precisión base, burst = probabilidad de disparar 2 veces seguidas, hide = [mín, máx] segundos escondido.
 export const LEVELS = [
   { name: 'Primer duelo',    enemies: [{ x: -9, z: -11, helmet: false }], aim: 1.3, react: 0.8, acc: 0.25, burst: 0,    hide: [2.4, 4.2] },
-  { name: 'Casco de acero',  enemies: [{ x: 9, z: -11, helmet: true }],   aim: 1.1, react: 0.6, acc: 0.32, burst: 0.15, hide: [2.0, 3.6] },
-  { name: 'Francotirador',   enemies: [{ x: -9, z: -11, helmet: true }],  aim: 0.9, react: 0.5, acc: 0.4,  burst: 0.3,  hide: [1.6, 3.0] },
+  { name: 'Casco de acero',  enemies: [{ x: 9, z: -11, helmet: true }],   aim: 1.15, react: 0.65, acc: 0.28, burst: 0.1, hide: [2.2, 3.8] },
+  { name: 'Francotirador',   enemies: [{ x: -9, z: -11, helmet: true }],  aim: 1.0, react: 0.55, acc: 0.33, burst: 0.2, hide: [1.9, 3.3] },
 ];
