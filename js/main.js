@@ -1,7 +1,7 @@
 // Punto de entrada: une lógica, vista, audio e interfaz. Bucle con Delta Time y calidad adaptable.
 import { CFG, TIERS, UPGRADES } from './config.js';
 import * as core from './game-core.js';
-import { stats, applyUpgrade, reload, updateCombat } from './game-combat.js';
+import { stats, applyUpgrade, reload, updateCombat, aimingAtEnemy } from './game-combat.js';
 import { loadModel } from './loader.js';
 import { createView } from './view-scene.js';
 import { createFx } from './view-fx.js';
@@ -68,6 +68,8 @@ async function boot() {
     data.quality = sel.value; writeSave(data);
     tier = sel.value === 'auto' ? autoTier() : sel.value; view.setQuality(tier);
   };
+  const chk = $('auto'); chk.checked = data.auto;
+  chk.onchange = () => { data.auto = chk.checked; writeSave(data); };
   const begin = () => {
     initAudio();
     if (!input.touch) canvas.requestPointerLock();
@@ -94,11 +96,12 @@ async function boot() {
     const dt = Math.min((now - prev) / 1000, 0.05); // limitar saltos (pestaña en segundo plano)
     prev = now;
     if (S.state === 'play') {
-      poll();
-      core.look(input.dx - (input.turn * 2.4 * dt) / CFG.player.sens, input.dy);
+      poll(dt);
+      const k = dt / CFG.player.sens; // ruleta derecha / teclado -> velocidad angular (rad/s) con Delta Time
+      core.look(input.dx - input.turn * 2.4 * k + input.rx * 3.3 * k, input.dy + input.ry * 2.3 * k);
       core.update(dt, input);
       if (input.reload) reload();
-      updateCombat(dt, input.fire);
+      updateCombat(dt, input.fire || (input.touch && data.auto && aimingAtEnemy()));
     }
     input.dx = input.dy = 0; input.reload = false;
     fx.update(dt);

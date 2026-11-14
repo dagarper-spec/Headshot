@@ -35,12 +35,16 @@ html,body{height:100%;overflow:hidden;background:#000;color:#e8e6e1;touch-action
 
 /* Controles táctiles */
 #touch{position:fixed;inset:0;pointer-events:none}
-#stick{display:none;position:fixed;width:110px;height:110px;border-radius:50%;border:2px solid #fff4;background:#fff1}
-#stick i{position:absolute;left:35px;top:35px;width:40px;height:40px;border-radius:50%;background:#fff6}
+.pad{position:absolute;pointer-events:auto;width:130px;height:130px;border-radius:50%;border:2px solid #fff4;background:#ffffff14;
+  bottom:max(26px,env(safe-area-inset-bottom))}
+.pad i{position:absolute;left:35px;top:35px;width:56px;height:56px;border-radius:50%;background:#fff5;border:2px solid #fff6}
+#sL{left:max(24px,env(safe-area-inset-left))}
+#sR{right:max(24px,env(safe-area-inset-right))}
 .btn{position:absolute;pointer-events:auto;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:#c0392b99;border:2px solid #fff6;font-size:15px}
-#bFire{right:max(18px,env(safe-area-inset-right));bottom:max(90px,calc(env(safe-area-inset-bottom) + 80px));width:92px;height:92px}
-#bRel{right:max(122px,calc(env(safe-area-inset-right) + 112px));bottom:max(40px,env(safe-area-inset-bottom));width:60px;height:60px;background:#34495e99}
+#bFire{right:max(34px,calc(env(safe-area-inset-right) + 30px));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px);width:84px;height:84px}
+#bFireL{left:max(34px,calc(env(safe-area-inset-left) + 30px));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px);width:84px;height:84px}
+#bRel{right:max(160px,calc(env(safe-area-inset-right) + 156px));bottom:max(40px,env(safe-area-inset-bottom));width:56px;height:56px;background:#34495e99}
 
 /* Pantallas */
 .ov{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;

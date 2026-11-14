@@ -32,6 +32,19 @@ export function updateCombat(dt, fireHeld) {
   }
 }
 
+// ¿Hay un enemigo justo bajo la mira (sin cajas por medio)? Sirve para el disparo automático táctil.
+export function aimingAtEnemy() {
+  const p = S.player, cp = Math.cos(p.pitch);
+  const dx = -Math.sin(p.yaw) * cp, dy = Math.sin(p.pitch), dz = -Math.cos(p.yaw) * cp;
+  const wall = rayWorld(p.x, CFG.eye, p.z, dx, dy, dz);
+  for (const e of S.enemies) {
+    if (!e.active) continue;
+    const h = rayCyl(e, p.x, CFG.eye, p.z, dx, dy, dz);
+    if (h && h.t < wall) return true;
+  }
+  return false;
+}
+
 function shoot() {
   const st = stats(), p = S.player;
   S.mag--; S.fireT = st.rate;

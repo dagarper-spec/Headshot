@@ -1,9 +1,9 @@
 // Entrada unificada: teclado + ratón (pointer lock) en escritorio, joystick + arrastre táctil en móvil.
-export const input = { mx: 0, mz: 0, dx: 0, dy: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false };
+export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false };
 
 const keys = {};
-const stick = { id: -1, ox: 0, oy: 0, x: 0, z: 0 };
-const look = { id: -1, x: 0, y: 0 };
+const pads = { L: { id: -1, x: 0, y: 0, el: null }, R: { id: -1, x: 0, y: 0, el: null } }; // ruletas táctiles
+let edgeT = 0;
 const $ = (id) => document.getElementById(id);
 
 export function initInput(canvas) {
@@ -28,39 +28,29 @@ export function initInput(canvas) {
   addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; });
 
   if (!input.touch) return;
-  const zone = $('stick'), knob = zone.firstElementChild;
+  pads.L.el = $('sL'); pads.R.el = $('sR');
 
-  document.addEventListener('touchstart', (e) => {
-    if (e.target.closest('.btn,.ov')) return;
-    e.preventDefault();
-    for (const t of e.changedTouches) {
-      if (t.clientX < innerWidth * 0.45 && stick.id < 0) {
-        Object.assign(stick, { id: t.identifier, ox: t.clientX, oy: t.clientY, x: 0, z: 0 });
-        zone.style.cssText = `display:block;left:${t.clientX - 55}px;top:${t.clientY - 55}px`;
-        knob.style.transform = 'translate(0,0)';
-      } else if (look.id < 0) Object.assign(look, { id: t.identifier, x: t.clientX, y: t.clientY });
-    }
-  }, { passive: false });
-
+  // Ruleta fija: la posición del dedo respecto al centro da el valor (-1..1).
+  const setPad = (p, t) => {
+    const r = p.el.getBoundingClientRect();
+    let dx = (t.clientX - r.left - r.width / 2) / 50, dy = (t.clientY - r.top - r.height / 2) / 50;
+    const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
+    p.x = dx; p.y = dy;
+    p.el.firstElementChild.style.transform = `translate(${dx * 38}px,${dy * 38}px)`;
+  };
+  const reset = (p) => { p.id = -1; p.x = p.y = 0; p.el.firstElementChild.style.transform = 'translate(0,0)'; };
+  for (const p of [pads.L, pads.R]) {
+    p.el.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (p.id >= 0) return;
+      const t = e.changedTouches[0]; p.id = t.identifier; setPad(p, t);
+    }, { passive: false });
+  }
   document.addEventListener('touchmove', (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === stick.id) {
-        let dx = (t.clientX - stick.ox) / 50, dy = (t.clientY - stick.oy) / 50;
-        const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
-        stick.x = dx; stick.z = -dy;
-        knob.style.transform = `translate(${dx * 40}px,${dy * 40}px)`;
-      } else if (t.identifier === look.id) {
-        input.dx += (t.clientX - look.x) * 1.7; input.dy += (t.clientY - look.y) * 1.7;
-        look.x = t.clientX; look.y = t.clientY;
-      }
-    }
+    for (const t of e.changedTouches) for (const p of [pads.L, pads.R]) if (t.identifier === p.id) setPad(p, t);
   }, { passive: false });
-
   const end = (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === stick.id) { stick.id = -1; stick.x = stick.z = 0; zone.style.display = 'none'; }
-      if (t.identifier === look.id) look.id = -1;
-    }
+    for (const t of e.changedTouches) for (const p of [pads.L, pads.R]) if (t.identifier === p.id) reset(p);
   };
   document.addEventListener('touchend', end);
   document.addEventListener('touchcancel', end);
@@ -69,15 +59,29 @@ export function initInput(canvas) {
     el.addEventListener('touchstart', (e) => { e.preventDefault(); on(); }, { passive: false });
     ['touchend', 'touchcancel'].forEach((n) => el.addEventListener(n, (e) => { e.preventDefault(); off(); }));
   };
-  hold($('bFire'), () => { input.fire = true; }, () => { input.fire = false; });
+  const fireOn = () => { input.fire = true; }, fireOff = () => { input.fire = false; };
+  hold($('bFire'), fireOn, fireOff); hold($('bFireL'), fireOn, fireOff);
   hold($('bRel'), () => { input.reload = true; }, () => {});
 }
 
-// Combina teclado y joystick en los ejes de movimiento.
-export function poll() {
+// Zona muerta + curva: salida suave y precisa cerca del centro, rápida en el borde.
+function shape(x, y, pow) {
+  const m = Math.hypot(x, y);
+  if (m < 0.12) return [0, 0, m];
+  const k = Math.pow((m - 0.12) / 0.88, pow) / m;
+  return [x * k, y * k, m];
+}
+
+// Combina teclado y ruletas. dt: segundos (para la aceleración al empujar la ruleta al máximo).
+export function poll(dt) {
+  const [lx, ly] = shape(pads.L.x, pads.L.y, 1);
+  const [rx, ry, rm] = shape(pads.R.x, pads.R.y, 1.8);
+  edgeT = rm > 0.92 ? edgeT + dt : 0;
+  const boost = 1 + 0.6 * Math.min(1, edgeT / 0.35);
+  input.rx = rx * boost; input.ry = ry * boost;
   const kx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
-  input.turn = (keys.ArrowLeft || keys.KeyQ ? 1 : 0) - (keys.ArrowRight || keys.KeyE ? 1 : 0); // giro con teclado
   const kz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
-  input.mx = Math.max(-1, Math.min(1, kx + stick.x));
-  input.mz = Math.max(-1, Math.min(1, kz + stick.z));
+  input.turn = (keys.ArrowLeft || keys.KeyQ ? 1 : 0) - (keys.ArrowRight || keys.KeyE ? 1 : 0);
+  input.mx = Math.max(-1, Math.min(1, kx + lx));
+  input.mz = Math.max(-1, Math.min(1, kz - ly));
 }
