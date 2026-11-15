@@ -18,3 +18,4 @@ Necesita servidor (módulos ES): `npx serve` o GitHub Pages. Three.js se carga d
 - Pistola animada «Heavy pistol animated» (Sketchfab). Autor y licencia: *pendiente de indicar* (comprobar en la página del modelo; si es CC-BY, hay que citarlo aquí).
 - Soldado y animaciones: Mixamo (Y Bot).
 - La mano enguantada y el antebrazo de primera persona son procedurales (código propio).
+- Música «Tactical Encounter»: creada por el autor del juego con Google Flow Music (condiciones de uso: revisar en la herramienta).

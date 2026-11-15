@@ -7,7 +7,7 @@ import { createView } from './view-scene.js';
 import { loadFps } from './view-fps.js';
 import { createFx } from './view-fx.js';
 import { input, initInput, poll, resetCrouch } from './input.js';
-import { initAudio, sfx } from './audio.js';
+import { initAudio, sfx, music } from './audio.js';
 import { loadSave, writeSave } from './save.js';
 import { ui } from './ui.js';
 
@@ -40,10 +40,11 @@ async function boot() {
 
   // ----- Eventos de la lógica -> efectos, sonido y UI -----
   on('shot', (d) => {
-    sfx.shot(); view.shot(); fx.shoot(d.end);
+    sfx.shot(); music.duck(); view.shot(); fx.shoot(d.end);
     if (!d.hit) fx.burst(...d.end, 2.4, 1.6, 0.6, 7, 3.5); // chispas en la pared/caja
   });
   on('enemyShot', (d) => {
+    music.duck();
     const from = view.gunPos(d.e.id) || d.from; view.fire(d.e.id);
     sfx.eshot(); fx.shoot(d.end, from);
     fx.burst(...from, 3, 2, 0.8, 6, 2);
@@ -66,9 +67,12 @@ async function boot() {
     data.quality = sel.value; writeSave(data);
     tier = sel.value === 'auto' ? autoTier() : sel.value; view.setQuality(tier);
   };
+  const mus = $('music'); mus.value = data.music ? '1' : '0'; music.setOn(false); // empieza al pulsar Jugar (gesto del usuario)
+  mus.onchange = () => { data.music = mus.value === '1'; writeSave(data); music.setOn(data.music && S.state !== 'menu'); };
   const note = () => 'Nivel ' + (data.level + 1) + ': ' + LEVELS[data.level % LEVELS.length].name;
   const begin = (lvl) => {
     try { initAudio(); } catch { /* sin audio */ }
+    music.setOn(data.music);
     if (!input.touch) canvas.requestPointerLock();
     ui.hide('menu'); ui.hide('over'); ui.show('hud');
     if (input.touch) ui.show('touch');
@@ -93,7 +97,7 @@ async function boot() {
   $('restart').onclick = () => { S.state = 'menu'; begin(S.level); }; // reinicia el nivel actual
   addEventListener('keydown', (e) => { if (e.code === 'KeyP') pause(); });
   document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && !input.touch) pause(); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); music.pause(); } else music.setOn(data.music && S.state !== 'menu'); });
   ui.menu('HEADSHOT', 'Jugar', ''); syncCont(false);
 
   // ----- Bucle principal con Delta Time -----
@@ -124,7 +128,7 @@ async function boot() {
       updateCombat(dt, input.fire || input.pulse > 0); // pulse = toque en la ruleta derecha
     } else core.update(dt, input);
     input.dx = input.dy = 0; input.reload = false;
-    fx.update(dt);
+    fx.update(dt); music.update(raw);
     const st = stats();
     view.sync(S, now / 1000, dt, fx, S.reloading ? 1 - S.reloadT / st.reload : -1);
     if (S.state !== 'menu') ui.hud(S, st, LEVELS[S.level].name);

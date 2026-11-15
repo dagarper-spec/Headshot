@@ -51,3 +51,18 @@ export const sfx = {
   wave() { tone(90, 70, 0.8, 'sawtooth', 0.35); tone(135, 105, 0.8, 'sawtooth', 0.2); },
   up() { tone(500, 900, 0.15, 'triangle', 0.25); setTimeout(() => tone(750, 1200, 0.2, 'triangle', 0.25), 110); },
 };
+
+// ---- Música de fondo (MP3 en bucle, en streaming). Se baja un momento con cada disparo (ducking). ----
+const song = typeof Audio !== 'undefined' ? new Audio('assets/audio/musica.mp3') : null;
+let musicOn = true, duck = 0;
+const MUSIC_VOL = 0.35;
+if (song) { song.loop = true; song.preload = 'auto'; song.volume = 0; }
+export const music = {
+  // Debe llamarse desde un gesto del usuario (móvil): empieza o reanuda la canción.
+  play() { if (song && musicOn) song.play().catch(() => {}); },
+  pause() { if (song) song.pause(); },
+  setOn(v) { musicOn = v; if (!song) return; if (v) this.play(); else song.pause(); },
+  duck() { duck = 1; },
+  // dt en segundos: suaviza el volumen y recupera tras el ducking
+  update(dt) { if (!song) return; duck = Math.max(0, duck - dt * 1.6); song.volume = MUSIC_VOL * (1 - 0.55 * duck); },
+};
