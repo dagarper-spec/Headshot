@@ -2,7 +2,7 @@
 import { CFG, TIERS, LEVELS } from './config.js';
 import * as core from './game-core.js';
 import { stats, reload, updateCombat, aimAssist } from './game-combat.js';
-import { loadModel, loadMixamo } from './loader.js';
+import { loadModel, loadMixamo, loadProps } from './loader.js';
 import { createView } from './view-scene.js';
 import { loadFps } from './view-fps.js';
 import { createFx } from './view-fx.js';
@@ -30,10 +30,11 @@ let tier = data.quality === 'auto' ? autoTier() : data.quality;
 
 async function boot() {
   const model = (await loadMixamo(CFG.models.dir)) || (await loadModel(CFG.models.enemy)); // Mixamo > .glb > procedural
+  const props = await loadProps(CFG.models.dir); // contenedores del escenario (opcional)
   const fpsData = await loadFps(CFG.models.dir); // pistola animada + mano (opcional)
   let view;
-  try { view = createView(canvas, tier, model, fpsData); } catch (e) { // si el render avanzado falla, reintentar en calidad baja
-    console.warn('createView falló, reintento en baja', e); tier = 'low'; view = createView(canvas, 'low', model, fpsData);
+  try { view = createView(canvas, tier, model, fpsData, props); } catch (e) { // si el render avanzado falla, reintentar en calidad baja
+    console.warn('createView falló, reintento en baja', e); tier = 'low'; view = createView(canvas, 'low', model, fpsData, props);
   }
   const fx = createFx(view.scene, view.camera);
   let slowT = 0, endTimer = 0; // cámara lenta al terminar el nivel

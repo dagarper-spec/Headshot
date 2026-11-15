@@ -51,3 +51,12 @@ export async function loadMixamo(dir) {
     return null;
   }
 }
+
+// Contenedores del escenario (opcional). Devuelve { c1, c2 } o null si faltan los archivos.
+export async function loadProps(dir) {
+  try {
+    const L = getLoader();
+    const [a, b] = await Promise.all([L.loadAsync(dir + 'container1.glb'), L.loadAsync(dir + 'container2.glb')]);
+    return { c1: a.scene, c2: b.scene };
+  } catch (e) { console.info('[props] sin contenedores: ' + (e.message || e)); return null; }
+}

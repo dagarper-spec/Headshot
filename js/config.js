@@ -9,11 +9,13 @@ export const CFG = {
   weapon: { rate: 0.24, mag: 6, reload: 1.5, range: 60 }, // pistola semiautomática de 6 balas
   // walk/run = velocidades (m/s) que coinciden con las animaciones Mixamo de caminar y correr
   enemy: { speed: 3.4, walk: 1.8, run: 4.6, r: 0.3, h: 1.8, hAim: 1.62, hCrouch: 1.38 },
-  // Obstáculos [x, z, ancho, fondo, alto]. Alto == height -> pilar de hormigón.
+  // Obstáculos [x, z, ancho, fondo, alto, tipo]. Alto == height -> pilar de hormigón.
+  // tipo: 'c1' contenedor largo (6,1 m, modelo con textura) o 'c2' contenedor cúbico (se pinta con un color).
   crates: [
-    [-7, -6, 2, 2, 1.6], [-4.5, -6.5, 1.4, 1.4, 1.4], [7, 5, 2.4, 2, 2],
-    [6, -7, 1.6, 1.6, 1.6], [-8, 6, 2, 3, 1.8], [0, -1, 2.4, 2.4, 2.2],
-    [10, -2, 1.4, 3, 1.4], [-11, 0, 1.4, 3, 2], [3, 8, 1.4, 1.4, 1.4],
+    [-6, -5, 6.1, 2.43, 2.64, 'c1'], [7.5, -4, 2.43, 6.1, 2.64, 'c1'],
+    [3.5, 6.5, 6.1, 2.43, 2.64, 'c1'], [-9.5, 4.5, 2.43, 6.1, 2.64, 'c1'],
+    [0, -0.5, 2.3, 2.23, 2.29, 'c2', 0x8a3b2a], [-5, 9.5, 2.3, 2.23, 2.29, 'c2', 0x2f5d62],
+    [11, 7, 2.3, 2.23, 2.29, 'c2', 0x9a7b2f], [-11.5, -2, 2.3, 2.23, 2.29, 'c2', 0x3d4f2f],
     [-9, -9, 1, 1, 7.5], [9, -9, 1, 1, 7.5], [-9, 9, 1, 1, 7.5], [9, 9, 1, 1, 7.5],
   ],
   // Modelos .glb opcionales. Si el archivo no existe se usa el soldado procedural.

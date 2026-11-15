@@ -20,13 +20,76 @@ for (let i = 0; i < CFG.pool; i++) {
     face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: 3, sp: 0, r: 0.3, h: 1.38, deadT: 0, acc: 0.4 });
 }
 
-// Puntos de cobertura precalculados alrededor de cada caja/pilar.
+// Puntos de cobertura precalculados: a lo largo del perímetro de cada contenedor/pilar (a 0,7 m de distancia).
 const SPOTS = [];
 for (const b of CFG.crates) {
-  for (let k = 0; k < 8; k++) {
-    const a = (k * Math.PI) / 4, x = b[0] + Math.cos(a) * (b[2] / 2 + 0.7), z = b[1] + Math.sin(a) * (b[3] / 2 + 0.7);
-    if (free(x, z, 0.4)) SPOTS.push({ x, z });
+  const hx = b[2] / 2 + 0.7, hz = b[3] / 2 + 0.7, per = 4 * (hx + hz), n = Math.max(8, Math.round(per / 1.6));
+  for (let k = 0; k < n; k++) { // punto k sobre el rectángulo (recorrido uniforme)
+    let t = (k / n) * per, x, z;
+    if (t < 2 * hx) { x = -hx + t; z = -hz; } else if ((t -= 2 * hx) < 2 * hz) { x = hx; z = -hz + t; }
+    else if ((t -= 2 * hz) < 2 * hx) { x = hx - t; z = hz; } else { t -= 2 * hx; x = -hx; z = hz - t; }
+    if (free(b[0] + x, b[1] + z, 0.5)) SPOTS.push({ x: b[0] + x, z: b[1] + z });
   }
+}
+
+// ---------- Navegación: rejilla de 0,5 m + A* (8 vecinos). Los enemigos rodean los contenedores en vez de atascarse ----------
+const CELL = 0.5, NN = Math.round((CFG.half * 2) / CELL), NAVR = 0.48;
+const WALK = new Uint8Array(NN * NN);
+for (let iz = 0; iz < NN; iz++) for (let ix = 0; ix < NN; ix++) WALK[iz * NN + ix] = free(-CFG.half + (ix + 0.5) * CELL, -CFG.half + (iz + 0.5) * CELL, NAVR) ? 1 : 0;
+const cellOf = (v) => Math.max(0, Math.min(NN - 1, Math.floor((v + CFG.half) / CELL)));
+const centerOf = (i) => -CFG.half + (i + 0.5) * CELL;
+
+function nearestWalk(ix, iz) { // celda transitable más cercana (por si el punto cae dentro de un obstáculo)
+  if (WALK[iz * NN + ix]) return [ix, iz];
+  for (let r = 1; r < 6; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+    const x = ix + dx, z = iz + dz;
+    if (Math.max(Math.abs(dx), Math.abs(dz)) === r && x >= 0 && z >= 0 && x < NN && z < NN && WALK[z * NN + x]) return [x, z];
+  }
+  return null;
+}
+const lineFree = (ax, az, bx, bz) => { // ¿se puede ir en línea recta? (muestreo cada 0,25 m)
+  const d = Math.hypot(bx - ax, bz - az), n = Math.ceil(d / 0.25);
+  for (let i = 1; i < n; i++) { const t = i / n; if (!free(ax + (bx - ax) * t, az + (bz - az) * t, 0.4)) return false; }
+  return true;
+};
+
+// Devuelve la lista de puntos intermedios hasta (gx,gz) o null si no hay camino.
+function findPath(sx, sz, gx, gz) {
+  const s0 = nearestWalk(cellOf(sx), cellOf(sz)), g0 = nearestWalk(cellOf(gx), cellOf(gz));
+  if (!s0 || !g0) return null;
+  const start = s0[1] * NN + s0[0], goal = g0[1] * NN + g0[0];
+  const G = new Float32Array(NN * NN).fill(1e9), from = new Int32Array(NN * NN).fill(-1), closed = new Uint8Array(NN * NN);
+  const heap = [[0, start]]; G[start] = 0;
+  const push = (it) => { heap.push(it); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { let l = 2 * i + 1, r = l + 1, m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  const gxC = goal % NN, gzC = (goal / NN) | 0;
+  while (heap.length) {
+    const [, cur] = pop();
+    if (closed[cur]) continue;
+    closed[cur] = 1;
+    if (cur === goal) break;
+    const cx = cur % NN, cz = (cur / NN) | 0;
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dz) continue;
+      const nx = cx + dx, nz = cz + dz;
+      if (nx < 0 || nz < 0 || nx >= NN || nz >= NN || !WALK[nz * NN + nx]) continue;
+      if (dx && dz && (!WALK[cz * NN + nx] || !WALK[nz * NN + cx])) continue; // sin cortar esquinas
+      const ni = nz * NN + nx, g = G[cur] + (dx && dz ? 1.414 : 1);
+      if (g < G[ni]) { G[ni] = g; from[ni] = cur; push([g + Math.hypot(gxC - nx, gzC - nz), ni]); }
+    }
+  }
+  if (from[goal] < 0 && goal !== start) return null;
+  const cells = []; for (let c = goal; c !== -1; c = from[c]) cells.push({ x: centerOf(c % NN), z: centerOf((c / NN) | 0) });
+  cells.reverse(); cells[0] = { x: sx, z: sz }; cells.push({ x: gx, z: gz });
+  const out = []; let i = 0; // suavizado: saltar al punto más lejano visible en línea recta
+  while (i < cells.length - 1) { let j = cells.length - 1; while (j > i + 1 && !lineFree(cells[i].x, cells[i].z, cells[j].x, cells[j].z)) j--; out.push(cells[j]); i = j; }
+  return out;
+}
+
+// Asigna destino y calcula la ruta (si no hay ruta, va en línea recta).
+function setGoal(e, goal, next) {
+  e.goal = goal; e.next = next; e.state = 'move'; e.moveT = 0; e.stuckT = 0;
+  e.path = findPath(e.x, e.z, goal.x, goal.z) || [goal];
 }
 
 const lvl = () => LEVELS[S.level];
@@ -130,7 +193,7 @@ function pickPeek(c) {
 function retreat(e) {
   const c = pickCover(e);
   e.aiming = false; e.moveT = 0;
-  if (c) { e.cover = c; e.goal = c; e.next = 'hide'; e.state = 'move'; }
+  if (c) { e.cover = c; setGoal(e, c, 'hide'); }
   else { e.state = 'hide'; e.timer = 1; e.crouch = true; }
 }
 
@@ -162,22 +225,28 @@ function updateEnemies(dt) {
       if (e.sees) { e.react -= dt; if (e.react <= 0) beginAim(e); }
       else {
         e.react = lv.react;
-        if (e.timer <= 0) { e.goal = pickPeek(e.cover || e); e.next = 'aim'; e.state = 'move'; e.moveT = 0; }
+        if (e.timer <= 0) setGoal(e, pickPeek(e.cover || e), 'aim');
       }
     } else if (e.state === 'move') {
-      const gx = e.goal.x - e.x, gz = e.goal.z - e.z, gd = Math.hypot(gx, gz);
+      const last = !e.path || e.path.length <= 1, wp = e.path && e.path.length ? e.path[0] : e.goal;
+      const gx = wp.x - e.x, gz = wp.z - e.z, gd = Math.hypot(gx, gz);
       e.moveT += dt; e.crouch = false; e.moving = true;
       e.sp = (e.next === 'aim' ? CFG.enemy.walk : CFG.enemy.run) * (e.spd / CFG.enemy.speed); // asoma andando, huye corriendo
-      if (gd < 0.2 || e.moveT > 4.5) {
+      if ((last && gd < 0.2) || e.moveT > 8) {
         e.moving = false;
         if (e.next === 'aim') beginAim(e);
         else { e.state = 'hide'; e.crouch = true; e.timer = lv.hide[0] + Math.random() * (lv.hide[1] - lv.hide[0]); e.react = lv.react; }
-      } else {
+      } else if (!last && gd < 0.25) e.path.shift(); // siguiente punto de la ruta
+      else {
         turn(e, Math.atan2(gx, gz), dt);
         const st = Math.min(gd, e.sp * dt), ox = e.x, oz = e.z;
         e.x += (gx / gd) * st; e.z += (gz / gd) * st;
         resolve(e, e.r);
-        if (Math.hypot(e.x - ox, e.z - oz) < st * 0.4) { e.x += (-gz / gd) * st; e.z += (gx / gd) * st; resolve(e, e.r); } // rodear obstáculo
+        // atascado (avanza menos de la mitad de lo esperado): recalcular la ruta; si sigue, abandonar el destino
+        if (Math.hypot(e.x - ox, e.z - oz) < st * 0.5) {
+          e.stuckT += dt;
+          if (e.stuckT > 0.5) { e.path = findPath(e.x, e.z, e.goal.x, e.goal.z) || [e.goal]; e.stuckT = 0; e.stuckN = (e.stuckN || 0) + 1; if (e.stuckN > 3) { e.stuckN = 0; e.moveT = 9; } }
+        } else e.stuckT = 0;
       }
     } else if (e.state === 'aim') {
       e.aiming = true; e.moving = false; e.crouch = false; turn(e, toP, dt);

@@ -18,7 +18,7 @@ import { createFps } from './view-fps.js';
 const std = (color, rough, metal = 0, extra = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, envMapIntensity: 0.5, ...extra });
 
-export function createView(canvas, tier, model, fpsData) {
+export function createView(canvas, tier, model, fpsData, props) {
   let q = QUALITY[tier];
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: tier === 'low', powerPreference: 'high-performance' });
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -65,10 +65,30 @@ export function createView(canvas, tier, model, fpsData) {
   const beam = new THREE.BoxGeometry(W, 0.4, 0.5);
   for (let z = -10; z <= 10; z += 5) add(beam, M.beam, 0, HT - 0.35, z);
 
-  for (const b of CFG.crates) { // cajas y pilares (misma lista que la colisión)
+  // Coloca un contenedor GLB ajustado a la caja de colisión [x,z,w,d,h] (eje largo del modelo = X; si la caja es más
+  // fondo que ancho se gira 90°). Los de color liso (c2) se pintan con el tono indicado en b[6].
+  const addContainer = (src, b) => {
+    const box = new THREE.Box3().setFromObject(src), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    const turn = b[3] > b[2], w = turn ? b[3] : b[2], d = turn ? b[2] : b[3];
+    const o = src.clone(true), g = new THREE.Group();
+    o.position.set(-c.x, -box.min.y, -c.z); g.add(o);
+    g.scale.set(w / sz.x, b[4] / sz.y, d / sz.z);
+    g.position.set(b[0], 0, b[1]); g.rotation.y = turn ? Math.PI / 2 : 0;
+    o.traverse((m) => {
+      if (!m.isMesh) return;
+      m.castShadow = m.receiveShadow = true;
+      m.material = m.material.clone();
+      if (b[6] !== undefined) { m.material.color.set(b[6]).multiplyScalar(0.85); m.material.metalness = 0.35; m.material.roughness = 0.65; }
+      else { m.material.metalness = Math.min(m.material.metalness, 0.4); m.material.roughness = Math.max(0.55, m.material.roughness); }
+    });
+    scene.add(g);
+  };
+
+  for (const b of CFG.crates) { // contenedores y pilares (misma lista que la colisión)
     if (b[4] >= HT - 0.01) { add(new THREE.BoxGeometry(b[2], HT, b[3]), M.pillar, b[0], HT / 2, b[1]); continue; }
-    const m = M.crate.clone(); m.color.setScalar(0.75 + Math.random() * 0.4);
-    add(new THREE.BoxGeometry(b[2], b[4], b[3]), m, b[0], b[4] / 2, b[1]).rotation.y = 0;
+    if (props && props[b[5]]) { addContainer(props[b[5]], b); continue; }   // contenedor externo
+    const m = M.crate.clone(); m.color.setScalar(0.75 + Math.random() * 0.4);  // sin modelo: caja procedural
+    add(new THREE.BoxGeometry(b[2], b[4], b[3]), m, b[0], b[4] / 2, b[1]);
   }
 
   // Lámparas industriales: panel emisivo (HDR => bloom) + foco de luz

@@ -55,7 +55,7 @@ export const sfx = {
 // ---- Música de fondo (MP3 en bucle, en streaming). Se baja un momento con cada disparo (ducking). ----
 const song = typeof Audio !== 'undefined' ? new Audio('assets/audio/musica.mp3') : null;
 let musicOn = true, duck = 0;
-const MUSIC_VOL = 0.35;
+const MUSIC_VOL = 0.2;
 if (song) { song.loop = true; song.preload = 'auto'; song.volume = 0; }
 export const music = {
   // Debe llamarse desde un gesto del usuario (móvil): empieza o reanuda la canción.
