@@ -151,7 +151,7 @@ export function createView(canvas, tier, model) {
       if (Math.abs(camera.fov - f) > 0.05) { camera.fov = f; camera.updateProjectionMatrix(); }
       const hurt = S.hp < S.maxHp, sway = hurt ? 0.0035 : 0.0012; // herido = puntería temblorosa
       const dead = S.state === 'over' ? Math.min(S.deathT, 0.7) : 0;
-      camera.position.set(p.x, CFG.eye + bob * 0.035 - dead * 1.4, p.z);
+      camera.position.set(p.x, S.eye + bob * 0.035 - dead * 1.4, p.z);
       eu.set(p.pitch + Math.sin(time * 1.7) * sway + (Math.random() - 0.5) * fx.shake * 0.03 + fx.kick * 0.02,
         p.yaw + Math.cos(time * 1.3) * sway + (Math.random() - 0.5) * fx.shake * 0.03, dead * 0.5, 'YXZ');
       camera.rotation.copy(eu);
@@ -183,8 +183,8 @@ export function createView(canvas, tier, model) {
         L.visible = s.dot.visible = show;
         if (show) {
           const gp = view.gunPos(i) || [e.x + Math.sin(e.face) * 0.6, 1.5, e.z + Math.cos(e.face) * 0.6];
-          const dx = p.x - gp[0], dy = CFG.eye - gp[1], dz = p.z - gp[2], d = Math.hypot(dx, dy, dz);
-          L.position.set(gp[0] + dx / 2, gp[1] + dy / 2, gp[2] + dz / 2); L.scale.z = d; L.lookAt(p.x, CFG.eye, p.z);
+          const dx = p.x - gp[0], dy = S.eye - gp[1], dz = p.z - gp[2], d = Math.hypot(dx, dy, dz);
+          L.position.set(gp[0] + dx / 2, gp[1] + dy / 2, gp[2] + dz / 2); L.scale.z = d; L.lookAt(p.x, S.eye, p.z);
           L.material.opacity = 0.25 + 0.75 * e.aimK;
           s.dot.position.set(gp[0], gp[1], gp[2]); s.dot.scale.setScalar(0.5 + 1.8 * e.aimK);
         }

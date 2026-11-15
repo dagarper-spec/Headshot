@@ -9,7 +9,7 @@ export const emit = (e, d) => { (L[e] || []).forEach((f) => f(d)); };
 
 export const S = {
   state: 'menu', // menu | play | pause | win | over
-  level: 0, t: 0, grace: 0, deathT: 0, zoom: false,
+  level: 0, t: 0, grace: 0, deathT: 0, zoom: false, crouch: false, eye: 1.7,
   hp: 2, maxHp: 2, mag: 6, reloadT: 0, fireT: 0, reloading: false, latch: false,
   player: { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 },
   enemies: [], // Object Pool reutilizado en cada nivel
@@ -35,7 +35,7 @@ export function startLevel(i) {
   S.level = i % LEVELS.length;
   const lv = lvl();
   Object.assign(S, { t: 0, grace: 3, deathT: 0, hp: CFG.player.hp, maxHp: CFG.player.hp, mag: CFG.weapon.mag,
-    reloading: false, fireT: 0, latch: false, zoom: false, state: 'play' });
+    reloading: false, fireT: 0, latch: false, zoom: false, crouch: false, eye: CFG.eye, state: 'play' });
   Object.assign(S.player, { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 });
   S.enemies.forEach((e) => { e.active = false; e.alive = false; });
   lv.enemies.forEach((d, k) => {
@@ -63,12 +63,13 @@ export function update(dt, inp) {
   }
   if (S.state !== 'play') return;
   S.t += dt; S.grace = Math.max(0, S.grace - dt);
+  S.eye += ((S.crouch ? CFG.eyeCrouch : CFG.eye) - S.eye) * Math.min(1, dt * 10); // agacharse/levantarse suave
   movePlayer(dt, inp);
   updateEnemies(dt);
 }
 
 function movePlayer(dt, inp) {
-  const p = S.player, sp = CFG.player.speed * (S.zoom ? 0.55 : 1);
+  const p = S.player, sp = CFG.player.speed * (S.zoom ? 0.55 : 1) * (S.crouch ? 0.55 : 1);
   let mx = inp.mx, mz = inp.mz;
   const l = Math.hypot(mx, mz);
   if (l > 1) { mx /= l; mz /= l; }
@@ -107,7 +108,7 @@ function pickCover(e) {
   for (const c of SPOTS) {
     const dp = Math.hypot(c.x - p.x, c.z - p.z);
     if (dp < 5 || dp > 21) continue;
-    if (!blocked(c.x, 1.25, c.z, p.x, CFG.eye, p.z)) continue;
+    if (!blocked(c.x, 1.25, c.z, p.x, S.eye, p.z)) continue;
     if (S.enemies.some((o) => o !== e && o.active && o.alive && o.goal && Math.hypot(o.goal.x - c.x, o.goal.z - c.z) < 1.5)) continue;
     const de = Math.hypot(c.x - e.x, c.z - e.z);
     const sc = de + Math.random() * 5 + (de < 1 ? 6 : 0);
@@ -121,7 +122,7 @@ function pickPeek(c) {
   const p = S.player, dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz) || 1, tx = -dz / d, tz = dx / d;
   for (const o of [0, 0.8, -0.8, 1.4, -1.4, 2.1, -2.1]) {
     const x = c.x + tx * o, z = c.z + tz * o;
-    if (free(x, z, 0.35) && !blocked(x, CFG.eye - 0.05, z, p.x, CFG.eye, p.z)) return { x, z };
+    if (free(x, z, 0.35) && !blocked(x, S.eye - 0.05, z, p.x, S.eye, p.z)) return { x, z };
   }
   return { x: c.x, z: c.z };
 }
@@ -153,7 +154,7 @@ function updateEnemies(dt) {
     if (!e.alive) { e.deadT += dt; if (e.deadT > 3) e.active = false; continue; }
     e.hitT -= dt; e.timer -= dt;
     e.h = e.crouch ? CFG.enemy.hCrouch : e.aiming ? CFG.enemy.hAim : CFG.enemy.h;
-    e.sees = !blocked(e.x, e.crouch ? 1.25 : 1.65, e.z, p.x, CFG.eye, p.z);
+    e.sees = !blocked(e.x, e.crouch ? 1.25 : 1.65, e.z, p.x, S.eye, p.z);
     const toP = Math.atan2(p.x - e.x, p.z - e.z);
     if (e.state === 'hide') {
       e.crouch = true; e.moving = false; turn(e, toP, dt);
@@ -195,12 +196,12 @@ function enemyShoot(e) {
   const p = S.player, dx = p.x - e.x, dz = p.z - e.z, dist = Math.hypot(dx, dz);
   const from = [e.x + Math.sin(e.face) * 0.55, 1.5, e.z + Math.cos(e.face) * 0.55];
   const sees = e.sees; // misma visión que usó para decidir disparar
-  const acc = Math.max(0.12, e.acc * (1 - dist / 45) * (p.speed > 1 ? 0.65 : 1));
+  const acc = Math.max(0.12, e.acc * (1 - dist / 45) * (p.speed > 1 ? 0.65 : 1) * (S.crouch ? 0.75 : 1)); // agachado = blanco más pequeño
   let end, hit = false, head = false;
-  if (sees && Math.random() < acc) { hit = true; head = Math.random() < 0.3; end = [p.x, head ? CFG.eye : CFG.eye - 0.5, p.z]; }
+  if (sees && Math.random() < acc) { hit = true; head = Math.random() < 0.3; end = [p.x, head ? S.eye : S.eye - 0.5, p.z]; }
   else if (sees) end = [p.x + (Math.random() - 0.5) * 1.4, 0.4 + Math.random() * 1.6, p.z + (Math.random() - 0.5) * 1.4];
   else { // tapado: la bala golpea la caja
-    const d = [p.x - from[0], CFG.eye - from[1], p.z - from[2]], l = Math.hypot(...d), t = rayWorld(from[0], from[1], from[2], d[0] / l, d[1] / l, d[2] / l);
+    const d = [p.x - from[0], S.eye - from[1], p.z - from[2]], l = Math.hypot(...d), t = rayWorld(from[0], from[1], from[2], d[0] / l, d[1] / l, d[2] / l);
     end = [from[0] + (d[0] / l) * t, from[1] + (d[1] / l) * t, from[2] + (d[2] / l) * t];
   }
   emit('enemyShot', { e, from, end, hit, head });

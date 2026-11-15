@@ -1,10 +1,16 @@
 // Entrada unificada: teclado + ratón (pointer lock) en escritorio, joystick + arrastre táctil en móvil.
-export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false, zoom: false };
+export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false, zoom: false, crouch: false, pulse: 0 };
 
 const keys = {};
 const pads = { L: { id: -1, x: 0, y: 0, el: null }, R: { id: -1, x: 0, y: 0, el: null } }; // ruletas táctiles
 let edgeT = 0;
 const $ = (id) => document.getElementById(id);
+
+const toggleCrouch = () => {
+  input.crouch = !input.crouch;
+  const b = document.getElementById('bCrouch'); if (b) b.classList.toggle('on', input.crouch);
+};
+export const resetCrouch = () => { input.crouch = false; const b = document.getElementById('bCrouch'); if (b) b.classList.remove('on'); };
 
 export function initInput(canvas) {
   input.touch = matchMedia('(pointer:coarse)').matches; // solo si el puntero principal es táctil
@@ -12,6 +18,7 @@ export function initInput(canvas) {
   addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'KeyR') input.reload = true;
+    if (e.code === 'KeyC' && !e.repeat) toggleCrouch();
     if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   });
   addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -36,8 +43,11 @@ export function initInput(canvas) {
   // Ruleta fija: la posición del dedo respecto al centro da el valor (-1..1).
   const setPad = (p, t) => {
     const r = p.el.getBoundingClientRect();
-    let dx = (t.clientX - r.left - r.width / 2) / 50, dy = (t.clientY - r.top - r.height / 2) / 50;
+    // izquierda: centro fijo. derecha: el origen es donde pones el dedo (así un toque no mueve la cámara)
+    const cx = p === pads.R ? p.ox : r.left + r.width / 2, cy = p === pads.R ? p.oy : r.top + r.height / 2;
+    let dx = (t.clientX - cx) / 50, dy = (t.clientY - cy) / 50;
     const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
+    p.mv = Math.max(p.mv || 0, l);
     p.x = dx; p.y = dy;
     p.el.firstElementChild.style.transform = `translate(${dx * 38}px,${dy * 38}px)`;
   };
@@ -46,14 +56,21 @@ export function initInput(canvas) {
     p.el.addEventListener('touchstart', (e) => {
       e.preventDefault();
       if (p.id >= 0) return;
-      const t = e.changedTouches[0]; p.id = t.identifier; setPad(p, t);
+      const t = e.changedTouches[0]; p.id = t.identifier;
+      p.ox = t.clientX; p.oy = t.clientY; p.t0 = e.timeStamp; p.mv = 0; // hora real del toque (no la del frame)
+      setPad(p, t);
     }, { passive: false });
   }
   document.addEventListener('touchmove', (e) => {
     for (const t of e.changedTouches) for (const p of [pads.L, pads.R]) if (t.identifier === p.id) setPad(p, t);
   }, { passive: false });
   const end = (e) => {
-    for (const t of e.changedTouches) for (const p of [pads.L, pads.R]) if (t.identifier === p.id) reset(p);
+    for (const t of e.changedTouches) for (const p of [pads.L, pads.R]) {
+      if (t.identifier !== p.id) continue;
+      // toque corto y sin arrastrar en la ruleta derecha = disparo
+      if (p === pads.R && e.type === 'touchend' && e.timeStamp - p.t0 < 230 && p.mv < 0.3) input.pulse = 0.15;
+      reset(p);
+    }
   };
   document.addEventListener('touchend', end);
   document.addEventListener('touchcancel', end);
@@ -65,6 +82,7 @@ export function initInput(canvas) {
   const fireOn = () => { input.fire = true; }, fireOff = () => { input.fire = false; };
   hold($('bFire'), fireOn, fireOff);
   hold($('bZoom'), () => { input.zoom = !input.zoom; $('bZoom').classList.toggle('on', input.zoom); }, () => {});
+  hold($('bCrouch'), toggleCrouch, () => {});
   hold($('bRel'), () => { input.reload = true; }, () => {});
 }
 

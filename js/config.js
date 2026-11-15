@@ -2,7 +2,8 @@
 export const CFG = {
   half: 14,          // la arena mide 28x28 m
   height: 7.5,
-  eye: 1.7,
+  eye: 1.7,         // altura de los ojos de pie
+  eyeCrouch: 1.1,   // ... y agachado
   pool: 3,           // Object Pool de enemigos (máximo por nivel)
   player: { speed: 5, radius: 0.4, hp: 2, sens: 0.0022 }, // 2 vidas: cuerpo = -1, cabeza = muerte
   weapon: { rate: 0.24, mag: 6, reload: 1.5, range: 60 }, // pistola semiautomática de 6 balas

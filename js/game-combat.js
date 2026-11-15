@@ -32,10 +32,10 @@ const dirOf = (yaw, pitch) => {
 // ¿Hay un enemigo cerca de la mira? Se usa para frenar el giro (ayuda al apuntar táctil).
 export function aimAssist() {
   const p = S.player, [dx, dy, dz] = dirOf(p.yaw, p.pitch);
-  const wall = rayWorld(p.x, CFG.eye, p.z, dx, dy, dz);
+  const wall = rayWorld(p.x, S.eye, p.z, dx, dy, dz);
   for (const e of S.enemies) {
     if (!e.active || !e.alive) continue;
-    const h = rayCyl(e, p.x, CFG.eye, p.z, dx, dy, dz, 0.5);
+    const h = rayCyl(e, p.x, S.eye, p.z, dx, dy, dz, 0.5);
     if (h && h.t < wall) return true;
   }
   return false;
@@ -46,7 +46,7 @@ function shoot() {
   S.mag--; S.fireT = CFG.weapon.rate;
   const sp = (0.002 + Math.min(p.speed / 5, 1) * 0.012 + (S.hp < S.maxHp ? 0.008 : 0)) * (S.zoom ? 0.35 : 1); // herido = peor puntería
   const [dx, dy, dz] = dirOf(p.yaw + (Math.random() - 0.5) * sp * 2, p.pitch + (Math.random() - 0.5) * sp * 2);
-  const ox = p.x, oy = CFG.eye, oz = p.z;
+  const ox = p.x, oy = S.eye, oz = p.z;
   let bt = Math.min(CFG.weapon.range, rayWorld(ox, oy, oz, dx, dy, dz)), best = null, head = false;
   for (const e of S.enemies) {
     if (!e.active || !e.alive) continue;

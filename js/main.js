@@ -5,7 +5,7 @@ import { stats, reload, updateCombat, aimAssist } from './game-combat.js';
 import { loadModel, loadMixamo } from './loader.js';
 import { createView } from './view-scene.js';
 import { createFx } from './view-fx.js';
-import { input, initInput, poll } from './input.js';
+import { input, initInput, poll, resetCrouch } from './input.js';
 import { initAudio, sfx } from './audio.js';
 import { loadSave, writeSave } from './save.js';
 import { ui } from './ui.js';
@@ -16,7 +16,8 @@ const data = loadSave();
 const $ = (id) => document.getElementById(id);
 
 initInput(canvas);
-window.headshot = { S, core }; // acceso para pruebas y depuración
+if (input.touch) document.body.classList.add('touch');
+window.headshot = { S, core, input }; // acceso para pruebas y depuración
 
 // Calidad inicial según dispositivo (móvil -> más baja). Auto reduce si los FPS caen.
 function autoTier() {
@@ -69,7 +70,7 @@ async function boot() {
     if (!input.touch) canvas.requestPointerLock();
     ui.hide('menu'); ui.hide('over'); ui.show('hud');
     if (input.touch) ui.show('touch');
-    if (S.state === 'pause') S.state = 'play'; else core.startLevel(lvl);
+    if (S.state === 'pause') S.state = 'play'; else { resetCrouch(); core.startLevel(lvl); }
   };
   $('start').onclick = () => begin(0); // Jugar: siempre desde el nivel 1 (o continúa si está en pausa)
   $('cont').onclick = () => begin(data.level);
@@ -109,6 +110,8 @@ async function boot() {
       } else ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar');
     }
     S.zoom = input.zoom && S.state === 'play';
+    S.crouch = input.crouch && S.state === 'play';
+    if (input.pulse > 0) input.pulse -= raw;
     if (S.state === 'play') {
       poll(dt);
       // ruletas/teclado -> velocidad angular con Delta Time; ayuda al apuntar y zoom reducen la sensibilidad
@@ -116,7 +119,7 @@ async function boot() {
       core.look(input.dx - input.turn * 2.4 * k + input.rx * 3.3 * k, input.dy + input.ry * 2.3 * k);
       core.update(dt, input);
       if (input.reload) reload();
-      updateCombat(dt, input.fire);
+      updateCombat(dt, input.fire || input.pulse > 0); // pulse = toque en la ruleta derecha
     } else core.update(dt, input);
     input.dx = input.dy = 0; input.reload = false;
     fx.update(dt);
