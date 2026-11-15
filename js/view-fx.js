@@ -30,7 +30,7 @@ export function createFx(scene, camera) {
 
   // --- Destello de boca (luz siempre activa para no recompilar shaders) ---
   const flash = new THREE.PointLight(0xffa860, 0, 8, 2);
-  flash.position.set(0.2, -0.1, -1);
+  flash.position.set(0.15, -0.1, -0.8);
   camera.add(flash);
 
   const fx = { kick: 0, shake: 0, flashT: 0 };
@@ -49,7 +49,7 @@ export function createFx(scene, camera) {
   fx.shoot = (end, from) => { // trazador desde el arma (o desde `from`, un enemigo) hasta el impacto
     const t = tracers[ti]; ti = (ti + 1) % NT;
     if (from) tmp.set(from[0], from[1], from[2]);
-    else { camera.updateMatrixWorld(); tmp.set(0.17, -0.12, -0.62).applyMatrix4(camera.matrixWorld); }
+    else { camera.updateMatrixWorld(); tmp.set(0.15, -0.12, -0.58).applyMatrix4(camera.matrixWorld); }
     tmp2.set(end[0], end[1], end[2]);
     t.position.copy(tmp).lerp(tmp2, 0.5);
     t.scale.z = tmp.distanceTo(tmp2);

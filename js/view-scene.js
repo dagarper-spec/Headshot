@@ -13,11 +13,12 @@ import { CFG, QUALITY } from './config.js';
 import { makeMaterials, uvs } from './view-textures.js';
 import { buildSoldier, buildViewPistol, poseSoldier } from './view-models.js';
 import { createMixamoSoldier } from './view-mixamo.js';
+import { createFps } from './view-fps.js';
 
 const std = (color, rough, metal = 0, extra = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, envMapIntensity: 0.5, ...extra });
 
-export function createView(canvas, tier, model) {
+export function createView(canvas, tier, model, fpsData) {
   let q = QUALITY[tier];
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: tier === 'low', powerPreference: 'high-performance' });
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -82,9 +83,12 @@ export function createView(canvas, tier, model) {
   });
 
   // ---------- Arma en primera persona ----------
-  const gun = buildViewPistol();
-  gun.scale.setScalar(0.85);
-  gun.position.set(0.17, -0.17, -0.38);
+  // Pistola externa animada (Desert Eagle + mano enguantada) o, si no hay modelo, la procedural.
+  const fpsv = fpsData ? createFps(fpsData) : null;
+  const gun = fpsv ? fpsv.root : buildViewPistol();
+  const GB = fpsv ? [0.13, -0.2, -0.32] : [0.17, -0.17, -0.38], GZY = fpsv ? -0.1 : -0.12; // posición base y altura al apuntar
+  gun.scale.setScalar(fpsv ? 0.0095 : 0.85);
+  gun.position.set(...GB);
   camera.add(gun);
 
   // ---------- Enemigos (un slot visual por cada enemigo del pool) ----------
@@ -140,7 +144,7 @@ export function createView(canvas, tier, model) {
 
   // ---------- Sincronización con el estado ----------
   const eu = new THREE.Euler();
-  let zk = 0; // 0 = cadera, 1 = apuntando con zoom
+  let zk = 0, wasRl = false; // zk: 0 = cadera, 1 = apuntando con zoom
   const view = {
     scene, camera,
     // rp: progreso de recarga 0..1 (o -1); fx aporta retroceso y temblor.
@@ -156,8 +160,14 @@ export function createView(canvas, tier, model) {
         p.yaw + Math.cos(time * 1.3) * sway + (Math.random() - 0.5) * fx.shake * 0.03, dead * 0.5, 'YXZ');
       camera.rotation.copy(eu);
       const rl = rp >= 0 ? Math.sin(rp * Math.PI) : 0;
-      gun.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.14, -0.38 + fx.kick * 0.05 + 0.04 * zk);
-      gun.rotation.set(fx.kick * 0.22 - rl * 0.8, 0, rl * 0.5);
+      if (fpsv) {
+        if (rp >= 0 && !wasRl) fpsv.reload(CFG.weapon.reload); wasRl = rp >= 0; fpsv.update(dt);
+        gun.position.set(GB[0] * (1 - zk) + bob * 0.003, GB[1] + (GZY - GB[1]) * zk + bob * 0.004 - rl * 0.02, GB[2] + fx.kick * 0.05 + 0.03 * zk);
+        gun.rotation.set(fx.kick * 0.18, 0, 0);
+      } else {
+        gun.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.14, -0.38 + fx.kick * 0.05 + 0.04 * zk);
+        gun.rotation.set(fx.kick * 0.22 - rl * 0.8, 0, rl * 0.5);
+      }
       lamps[1].intensity = 380 * (Math.random() < 0.03 ? 0.3 : 1); // lámpara que parpadea
       panels[1].color.setScalar(lamps[1].intensity < 380 ? 0.8 : 4);
       const k = Math.min(1, dt * 9);
@@ -193,6 +203,7 @@ export function createView(canvas, tier, model) {
     // Posición en el mundo de la boca del arma del enemigo i (solo con modelo Mixamo).
     gunPos(i) { const m = slots[i].mx; if (!m) return null; const v = m.muzzle.getWorldPosition(new THREE.Vector3()); return [v.x, v.y, v.z]; },
     fire(i) { if (slots[i].mx) slots[i].mx.fire(); },
+    shot() { if (fpsv) fpsv.fire(); }, // retroceso de la corredera del jugador
     render() { if (q.bloom || q.fxaa) composer.render(); else renderer.render(scene, camera); },
     setQuality, resize,
   };

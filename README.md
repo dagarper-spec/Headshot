@@ -13,3 +13,8 @@ Un almacén, una pistola de 6 balas y enemigos que se esconden, asoman y te apun
 
 ## Ejecutar
 Necesita servidor (módulos ES): `npx serve` o GitHub Pages. Three.js se carga desde jsDelivr.
+
+## Créditos
+- Pistola animada «Heavy pistol animated» (Sketchfab). Autor y licencia: *pendiente de indicar* (comprobar en la página del modelo; si es CC-BY, hay que citarlo aquí).
+- Soldado y animaciones: Mixamo (Y Bot).
+- La mano enguantada y el antebrazo de primera persona son procedurales (código propio).
