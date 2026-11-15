@@ -19,4 +19,4 @@ Necesita servidor (módulos ES): `npx serve` o GitHub Pages. Three.js se carga d
 - Soldado y animaciones: Mixamo (Y Bot).
 - La mano enguantada y el antebrazo de primera persona son procedurales (código propio).
 - Música «Tactical Encounter»: creada por el autor del juego con Google Flow Music (condiciones de uso: revisar en la herramienta).
-- Contenedores del escenario (2 modelos .glb aportados por el autor). Autor y licencia: *pendiente de indicar*.
+- Contenedor largo y caja de madera del escenario (modelos .glb aportados por el autor). Autor y licencia: *pendiente de indicar*.
