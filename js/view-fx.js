@@ -38,7 +38,7 @@ const blob = (x, cx, cy, r, a) => { const g = x.createRadialGradient(cx, cy, 0, 
 export function createFx(scene, camera, view) {
   const U = { scale: { value: 800 } };
   const spark = makeSystem(scene, 200, true, U);   // aditivo: chispas, fogonazo
-  const dust = makeSystem(scene, 360, false, U);   // normal: humo, polvo, astillas, sangre
+  const dust = makeSystem(scene, 800, false, U);   // normal: humo, polvo, astillas, sangre
   const fx = { kick: 0, shake: 0, flashT: 0, q: 1, blood: 1, onTink: null };
 
   // Emite una partícula en el sistema s. type: 0 normal, 1 escombro que rebota, 2 gota de sangre (deja mancha al caer)
@@ -64,7 +64,7 @@ export function createFx(scene, camera, view) {
   const mkRing = (n, geo, mats) => Array.from({ length: n }, (_, k) => { const m = new THREE.Mesh(geo, mats[k % mats.length]); m.visible = false; m.renderOrder = 2; scene.add(m); return m; });
   const plane = new THREE.PlaneGeometry(1, 1);
   const holes = mkRing(28, plane, [decalMat(holeTex, 0x050505, 0.85)]);
-  const splats = mkRing(42, plane, splatTex.map((t) => decalMat(t, 0x4a0707, 0.9)));
+  const splats = mkRing(80, plane, splatTex.map((t) => decalMat(t, 0x4a0707, 0.9)));
   const pools = mkRing(5, plane, [decalMat(poolTex, 0x3a0505, 0.92)]);
   let hi = 0, si = 0, pi = 0;
   const _q = new THREE.Quaternion(), _n = new THREE.Vector3(), _up = new THREE.Vector3(0, 0, 1);
@@ -156,7 +156,7 @@ export function createFx(scene, camera, view) {
       em(dust, x, y, z, dir[0] * 1.5 + rnd(1.2), dir[1] * 1.5 + rnd(1.2), dir[2] * 1.5 + rnd(1.2), 0.04, 0.2 + 0.08 * amount, 0.35 + Math.random() * 0.25, 0.4, 0.02, 0.02, 0.4, 0, 2.5);
   };
   fx.blood_level = 1;
-  fx.setBlood = (v) => { fx.blood_level = v === 'off' ? 0 : v === 'low' ? 0.45 : 1; };
+  fx.setBlood = (v) => { fx.blood_level = v === 'off' ? 0 : v === 'low' ? 0.7 : 2.4; };
 
   // Mancha de sangre en una superficie (pared/suelo) y charco bajo un cuerpo.
   fx.splat = (pt, n, size = 0.4) => {
@@ -166,7 +166,7 @@ export function createFx(scene, camera, view) {
   fx.pool = (x, z) => {
     if (fx.blood_level <= 0) return;
     const m = place(pools[pi], [x, 0.003, z], [0, 1, 0], 0.1); pi = (pi + 1) % pools.length;
-    m.userData.grow = 0; m.userData.maxS = (0.75 + Math.random() * 0.25) * (0.5 + fx.blood_level * 0.5); // crece despacio
+    m.userData.grow = 0; m.userData.maxS = (0.75 + Math.random() * 0.25) * Math.min(1.5, 0.5 + fx.blood_level * 0.5); // crece despacio
   };
 
   // Limpia los decales al empezar un nivel.

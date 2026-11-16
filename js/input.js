@@ -49,7 +49,7 @@ export function initInput(canvas) {
     const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
     p.mv = Math.max(p.mv || 0, l);
     p.x = dx; p.y = dy;
-    p.el.firstElementChild.style.transform = `translate(${dx * 38}px,${dy * 38}px)`;
+    p.el.firstElementChild.style.transform = `translate(${dx * r.width * 0.3}px,${dy * r.width * 0.3}px)`;
   };
   const reset = (p) => { p.id = -1; p.x = p.y = 0; p.el.firstElementChild.style.transform = 'translate(0,0)'; };
   for (const p of [pads.L, pads.R]) {
@@ -79,8 +79,6 @@ export function initInput(canvas) {
     el.addEventListener('touchstart', (e) => { e.preventDefault(); on(); }, { passive: false });
     ['touchend', 'touchcancel'].forEach((n) => el.addEventListener(n, (e) => { e.preventDefault(); off(); }));
   };
-  const fireOn = () => { input.fire = true; }, fireOff = () => { input.fire = false; };
-  hold($('bFire'), fireOn, fireOff);
   hold($('bZoom'), () => { input.zoom = !input.zoom; $('bZoom').classList.toggle('on', input.zoom); }, () => {});
   hold($('bCrouch'), toggleCrouch, () => {});
   hold($('bRel'), () => { input.reload = true; }, () => {});

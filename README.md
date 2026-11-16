@@ -15,8 +15,8 @@ Un almacén, una pistola de 6 balas y enemigos que se esconden, asoman y te apun
 Necesita servidor (módulos ES): `npx serve` o GitHub Pages. Three.js se carga desde jsDelivr.
 
 ## Créditos
-- Pistola animada «Heavy pistol animated» (Sketchfab). Autor y licencia: *pendiente de indicar* (comprobar en la página del modelo; si es CC-BY, hay que citarlo aquí).
+- Pistola animada «Heavy pistol animated» (Sketchfab). Autor: [bumstrum](https://sketchfab.com/bumstrum). Licencia: comprobar en la página del modelo.
 - Soldado y animaciones: Mixamo (Y Bot).
 - La mano enguantada y el antebrazo de primera persona son procedurales (código propio).
 - Música «Tactical Encounter»: creada por el autor del juego con Google Flow Music (condiciones de uso: revisar en la herramienta).
-- Contenedor largo y caja de madera del escenario (modelos .glb aportados por el autor). Autor y licencia: *pendiente de indicar*.
+- Contenedor: [hasnatahmedkhan216](https://sketchfab.com/hasnatahmedkhan216). Caja de madera: [zabokmata](https://sketchfab.com/zabokmata). Licencias: comprobar en las páginas de los modelos.

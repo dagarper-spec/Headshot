@@ -54,6 +54,8 @@ async function boot() {
     if (t > 9) return;
     const q = [pt[0] + dir[0] * t, pt[1] + dir[1] * t, pt[2] + dir[2] * t], sf = surface(q[0], q[1], q[2]);
     fx.splat(q, sf.n, size);
+    fx.splat([q[0] + (Math.random() - 0.5) * 0.7, q[1] + (Math.random() - 0.5) * 0.6, q[2] + (Math.random() - 0.5) * 0.7], sf.n, size * 0.6);
+    fx.splat([pt[0] + (Math.random() - 0.5) * 0.6, 0.004, pt[2] + (Math.random() - 0.5) * 0.6], [0, 1, 0], size * 1.3); // salpicadura en el suelo
   };
   on('shot', (d) => {
     sfx.shot(); music.duck(); view.shot(); fx.shoot(d.end);

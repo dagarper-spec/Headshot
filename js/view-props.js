@@ -2,6 +2,7 @@
 // Cada objeto se funde en 1-2 mallas (geometría combinada con colores por vértice) para gastar pocas llamadas de dibujo.
 import * as THREE from 'three';
 
+const GREY = new THREE.Color(0x6b655c);
 // Combina cajas/cilindros [{geo, x,y,z, color, ry}] en una sola BufferGeometry con colores por vértice.
 function merge(items) {
   const P = [], N = [], U = [], C = [], I = []; let off = 0;
@@ -9,9 +10,9 @@ function merge(items) {
   for (const it of items) {
     const g = it.geo.clone(); e.set(it.rx || 0, it.ry || 0, it.rz || 0); q.setFromEuler(e);
     m.compose(new THREE.Vector3(it.x || 0, it.y || 0, it.z || 0), q, new THREE.Vector3(1, 1, 1)); g.applyMatrix4(m);
-    col.set(it.color);
+    col.set(it.color); col.lerp(GREY, 0.3).multiplyScalar(0.62); // pintura desgastada y sucia
     const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) { P.push(p.getX(i), p.getY(i), p.getZ(i)); N.push(g.attributes.normal.getX(i), g.attributes.normal.getY(i), g.attributes.normal.getZ(i)); U.push(g.attributes.uv.getX(i), g.attributes.uv.getY(i)); C.push(col.r, col.g, col.b); }
+    for (let i = 0; i < p.count; i++) { P.push(p.getX(i), p.getY(i), p.getZ(i)); N.push(g.attributes.normal.getX(i), g.attributes.normal.getY(i), g.attributes.normal.getZ(i)); U.push(g.attributes.uv.getX(i), g.attributes.uv.getY(i)); const y = p.getY(i) + (it.y || 0) * 0, k = (0.78 + Math.random() * 0.3) * (0.72 + 0.28 * Math.min(1, Math.max(0, (it.y || 0) / 0.9))); C.push(col.r * k, col.g * k, col.b * k); }
     for (const k of g.index.array) I.push(k + off);
     off += p.count; g.dispose();
   }
@@ -25,14 +26,26 @@ const cyl = (r, h, n = 16) => new THREE.CylinderGeometry(r, r, h, n);
 const shade = (hex, k) => { const c = new THREE.Color(hex); c.multiplyScalar(k); return c.getHex(); };
 const mesh = (geo, mat, shadow = true) => { const o = new THREE.Mesh(geo, mat); o.castShadow = shadow; o.receiveShadow = true; return o; };
 
+// Textura de mugre: manchas, óxido, rayones y churretes verticales (se multiplica con el color de vértice).
+let GRIME;
+function grime() {
+  if (GRIME) return GRIME;
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  x.fillStyle = '#b8b2a6'; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 90; i++) { const v = 80 + Math.random() * 110; x.fillStyle = `rgba(${v},${v * 0.95},${v * 0.85},0.35)`; x.beginPath(); x.arc(Math.random() * 256, Math.random() * 256, 6 + Math.random() * 28, 0, 7); x.fill(); }
+  for (let i = 0; i < 38; i++) { x.fillStyle = `rgba(${120 + Math.random() * 40},${55 + Math.random() * 25},20,${0.18 + Math.random() * 0.25})`; x.beginPath(); x.arc(Math.random() * 256, Math.random() * 256, 3 + Math.random() * 14, 0, 7); x.fill(); } // óxido
+  for (let i = 0; i < 40; i++) { const px = Math.random() * 256; const g = x.createLinearGradient(0, 0, 0, 256); x.fillStyle = `rgba(30,24,18,${0.1 + Math.random() * 0.18})`; x.fillRect(px, Math.random() * 120, 1 + Math.random() * 3, 40 + Math.random() * 130); } // churretes
+  x.strokeStyle = 'rgba(235,230,215,0.3)'; x.lineWidth = 1; for (let i = 0; i < 40; i++) { x.beginPath(); const a = Math.random() * 256, b = Math.random() * 256; x.moveTo(a, b); x.lineTo(a + (Math.random() - 0.5) * 40, b + (Math.random() - 0.5) * 40); x.stroke(); } // rayones
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
 let MAT;
 function mats() {
   if (MAT) return MAT;
   MAT = {
-    steel: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.65 }),
-    stuff: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
-    barrel: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.55 }),
-    wood: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
+    steel: new THREE.MeshStandardMaterial({ vertexColors: true, map: grime(), roughness: 0.78, metalness: 0.4 }),
+    stuff: new THREE.MeshStandardMaterial({ vertexColors: true, map: grime(), roughness: 0.95, metalness: 0 }),
+    barrel: new THREE.MeshStandardMaterial({ vertexColors: true, map: grime(), roughness: 0.72, metalness: 0.4 }),
+    wood: new THREE.MeshStandardMaterial({ vertexColors: true, map: grime(), roughness: 0.97, metalness: 0 }),
   };
   return MAT;
 }
