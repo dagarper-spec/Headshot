@@ -76,6 +76,7 @@ export function initInput(canvas) {
   document.addEventListener('touchcancel', end);
 
   const hold = (el, on, off) => {
+    if (!el) return;
     el.addEventListener('touchstart', (e) => { e.preventDefault(); on(); }, { passive: false });
     ['touchend', 'touchcancel'].forEach((n) => el.addEventListener(n, (e) => { e.preventDefault(); off(); }));
   };
