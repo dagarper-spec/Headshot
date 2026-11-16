@@ -14,6 +14,7 @@ import { makeMaterials, uvs } from './view-textures.js';
 import { buildSoldier, buildViewPistol, poseSoldier } from './view-models.js';
 import { createMixamoSoldier } from './view-mixamo.js';
 import { createFps } from './view-fps.js';
+import { buildShelf, buildBarrels, buildDecor } from './view-props.js';
 
 const std = (color, rough, metal = 0, extra = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, envMapIntensity: 0.5, ...extra });
@@ -86,10 +87,14 @@ export function createView(canvas, tier, model, fpsData, props) {
 
   for (const b of CFG.crates) { // contenedores y pilares (misma lista que la colisión)
     if (b[4] >= HT - 0.01) { add(new THREE.BoxGeometry(b[2], HT, b[3]), M.pillar, b[0], HT / 2, b[1]); continue; }
+    if (b[5] === 'shelf') { scene.add(buildShelf(b)); continue; }
+    if (b[5] === 'barrel') { scene.add(buildBarrels(b)); continue; }
     if (props && props[b[5]]) { addContainer(props[b[5]], b); continue; }   // contenedor externo
     const m = M.crate.clone(); m.color.setScalar(0.75 + Math.random() * 0.4);  // sin modelo: caja procedural
     add(new THREE.BoxGeometry(b[2], b[4], b[3]), m, b[0], b[4] / 2, b[1]);
   }
+
+  buildDecor(scene, H, HT); // palés, tuberías, señales y marcas
 
   // Lámparas industriales: panel emisivo (HDR => bloom) + foco de luz
   [[-6, -6], [6, 6], [6, -6], [-6, 6]].forEach(([x, z]) => {
@@ -137,8 +142,9 @@ export function createView(canvas, tier, model, fpsData, props) {
   }
 
   // ---------- Calidad adaptable ----------
+  let vh = innerHeight; // altura real de render en píxeles (la usan las partículas)
   function resize() {
-    const w = innerWidth, h = innerHeight, pr = Math.min(devicePixelRatio || 1, q.maxDpr) * q.scale;
+    const w = innerWidth, h = innerHeight, pr = Math.min(devicePixelRatio || 1, q.maxDpr) * q.scale; vh = h * pr;
     renderer.setPixelRatio(pr); renderer.setSize(w, h, false);
     composer.setPixelRatio(pr); composer.setSize(w, h);
     camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -181,7 +187,7 @@ export function createView(canvas, tier, model, fpsData, props) {
       camera.rotation.copy(eu);
       const rl = rp >= 0 ? Math.sin(rp * Math.PI) : 0;
       if (fpsv) {
-        if (rp >= 0 && !wasRl) fpsv.reload(CFG.weapon.reload); wasRl = rp >= 0; fpsv.update(dt);
+        if (rp >= 0 && !wasRl) fpsv.reload(CFG.weapon.reload); wasRl = rp >= 0; fpsv.update(dt, rp);
         gun.position.set(GB[0] * (1 - zk) + bob * 0.003, GB[1] + (GZY - GB[1]) * zk + bob * 0.004 - rl * 0.02, GB[2] + fx.kick * 0.05 + 0.03 * zk);
         gun.rotation.set(fx.kick * 0.18, 0, 0);
       } else {
@@ -224,6 +230,10 @@ export function createView(canvas, tier, model, fpsData, props) {
     gunPos(i) { const m = slots[i].mx; if (!m) return null; const v = m.muzzle.getWorldPosition(new THREE.Vector3()); return [v.x, v.y, v.z]; },
     fire(i) { if (slots[i].mx) slots[i].mx.fire(); },
     shot() { if (fpsv) fpsv.fire(); }, // retroceso de la corredera del jugador
+    get viewH() { return vh; },
+    // Boca del arma y ventana de expulsión del jugador en el mundo (para fogonazo y casquillos).
+    muzzle(out) { if (fpsv) return fpsv.muzzle.getWorldPosition(out); return out.set(0.17, -0.12, -0.62).applyMatrix4(camera.matrixWorld); },
+    ejector(out) { if (fpsv) return fpsv.ejector.getWorldPosition(out); return out.set(0.1, -0.1, -0.4).applyMatrix4(camera.matrixWorld); },
     render() { if (q.bloom || q.fxaa) composer.render(); else renderer.render(scene, camera); },
     setQuality, resize,
   };

@@ -1,7 +1,7 @@
 // Combate del jugador: pistola semiautomática de 6 balas, disparo hitscan y ayuda al apuntar.
 import { CFG } from './config.js';
 import { S, emit, damageEnemy } from './game-core.js';
-import { rayWorld, rayCyl } from './game-geom.js';
+import { rayWorld, rayCyl, surface } from './game-geom.js';
 
 export const stats = () => ({ mag: CFG.weapon.mag, reload: CFG.weapon.reload });
 
@@ -41,10 +41,13 @@ export function aimAssist() {
   return false;
 }
 
+// Dispersión actual (radianes aprox.): sube al moverte o estar herido; baja al apuntar con zoom. La usa también la retícula.
+export const spread = () => (0.002 + Math.min(S.player.speed / 5, 1) * 0.012 + (S.hp < S.maxHp ? 0.008 : 0)) * (S.zoom ? 0.35 : 1) * (S.crouch ? 0.7 : 1);
+
 function shoot() {
   const p = S.player;
   S.mag--; S.fireT = CFG.weapon.rate;
-  const sp = (0.002 + Math.min(p.speed / 5, 1) * 0.012 + (S.hp < S.maxHp ? 0.008 : 0)) * (S.zoom ? 0.35 : 1); // herido = peor puntería
+  const sp = spread();
   const [dx, dy, dz] = dirOf(p.yaw + (Math.random() - 0.5) * sp * 2, p.pitch + (Math.random() - 0.5) * sp * 2);
   const ox = p.x, oy = S.eye, oz = p.z;
   let bt = Math.min(CFG.weapon.range, rayWorld(ox, oy, oz, dx, dy, dz)), best = null, head = false;
@@ -54,6 +57,6 @@ function shoot() {
     if (h && h.t < bt) { bt = h.t; best = e; head = h.head; }
   }
   const end = [ox + dx * bt, oy + dy * bt, oz + dz * bt];
-  emit('shot', { end, hit: !!best, head });
-  if (best) damageEnemy(best, head, end);
+  emit('shot', { end, hit: !!best, head, dir: [dx, dy, dz], surf: best ? null : surface(end[0], end[1], end[2]) });
+  if (best) damageEnemy(best, head, end, [dx, dy, dz]);
 }

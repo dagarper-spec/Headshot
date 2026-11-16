@@ -57,3 +57,25 @@ export function free(x, z, r) {
   }
   return true;
 }
+
+// Material de un obstáculo: contenedor/estantería/barril = metal, caja = madera, resto (pilares) = hormigón.
+export const matOf = (b) => (b[5] === 'c3' ? 'wood' : b[5] === 'c1' || b[5] === 'shelf' || b[5] === 'barrel' ? 'metal' : 'concrete');
+
+// Superficie en un punto de impacto: material y normal aproximada (para elegir el efecto adecuado).
+export function surface(x, y, z) {
+  const H = CFG.half;
+  let best = { kind: 'floor', n: [0, 1, 0], d: Math.abs(y) };
+  const test = (d, kind, n) => { if (d < best.d) best = { kind, n, d }; };
+  test(Math.abs(CFG.height - y), 'concrete', [0, -1, 0]);
+  test(Math.abs(H - x), 'concrete', [-1, 0, 0]); test(Math.abs(x + H), 'concrete', [1, 0, 0]);
+  test(Math.abs(H - z), 'concrete', [0, 0, -1]); test(Math.abs(z + H), 'concrete', [0, 0, 1]);
+  for (const b of CFG.crates) {
+    const hx = b[2] / 2, hz = b[3] / 2, e = 0.06;
+    if (x < b[0] - hx - e || x > b[0] + hx + e || z < b[1] - hz - e || z > b[1] + hz + e || y > b[4] + e) continue;
+    const k = matOf(b);
+    test(Math.abs(x - (b[0] - hx)), k, [-1, 0, 0]); test(Math.abs(x - (b[0] + hx)), k, [1, 0, 0]);
+    test(Math.abs(z - (b[1] - hz)), k, [0, 0, -1]); test(Math.abs(z - (b[1] + hz)), k, [0, 0, 1]);
+    test(Math.abs(y - b[4]), k, [0, 1, 0]);
+  }
+  return best;
+}

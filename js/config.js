@@ -10,11 +10,15 @@ export const CFG = {
   // walk/run = velocidades (m/s) que coinciden con las animaciones Mixamo de caminar y correr
   enemy: { speed: 3.4, walk: 1.8, run: 4.6, r: 0.3, h: 1.8, hAim: 1.62, hCrouch: 1.38 },
   // Obstáculos [x, z, ancho, fondo, alto, tipo]. Alto == height -> pilar de hormigón.
-  // tipo: 'c1' contenedor largo (6,1 m) o 'c3' caja de madera; sin tipo -> caja/pilar procedural.
+  // tipo: 'c1' contenedor largo (6,1 m), 'c3' caja de madera, 'shelf' estantería, 'barrel' barriles; sin tipo -> pilar.
   crates: [
     [-6, -5, 6.1, 2.43, 2.64, 'c1'], [7.5, -4, 2.43, 6.1, 2.64, 'c1'],
     [0, -0.5, 1.8, 1.8, 1.8, 'c3'], [-4.5, 8.5, 1.6, 1.6, 1.6, 'c3'], [10, 6, 1.8, 1.8, 1.8, 'c3'],
     [-11, -1.5, 1.6, 1.6, 1.6, 'c3'], [3.5, -9, 1.6, 1.6, 1.6, 'c3'], [-7.5, 3, 1.4, 1.4, 1.4, 'c3'],
+    // estanterías contra las paredes y grupos de barriles (procedurales)
+    [-3.5, -13.55, 4, 0.8, 2.6, 'shelf'], [4.5, -13.55, 4, 0.8, 2.6, 'shelf'], [13.55, 2, 0.8, 4, 2.6, 'shelf'],
+    [-13.55, 9, 0.8, 4, 2.6, 'shelf'], [-6, 13.55, 4, 0.8, 2.6, 'shelf'],
+    [-12.3, -6.5, 1.3, 1.3, 1.0, 'barrel'], [12.2, -11.2, 1.3, 1.3, 1.0, 'barrel'], [12.2, 11.5, 1.3, 1.3, 1.0, 'barrel'], [-12.2, 12.2, 1.3, 1.3, 1.0, 'barrel'],
     [-9, -9, 1, 1, 7.5], [9, -9, 1, 1, 7.5], [-9, 9, 1, 1, 7.5], [9, 9, 1, 1, 7.5],
   ],
   // Modelos .glb opcionales. Si el archivo no existe se usa el soldado procedural.

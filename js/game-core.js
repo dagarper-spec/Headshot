@@ -1,6 +1,6 @@
 // Lógica pura del duelo (sin Three.js ni DOM): estado, jugador, IA enemiga con coberturas y niveles.
 import { CFG, LEVELS } from './config.js';
-import { blocked, free, rayWorld } from './game-geom.js';
+import { blocked, free, rayWorld, surface } from './game-geom.js';
 
 // Bus de eventos mínimo: la lógica emite, la vista/audio/UI escuchan.
 const L = {};
@@ -273,7 +273,7 @@ function enemyShoot(e) {
     const d = [p.x - from[0], S.eye - from[1], p.z - from[2]], l = Math.hypot(...d), t = rayWorld(from[0], from[1], from[2], d[0] / l, d[1] / l, d[2] / l);
     end = [from[0] + (d[0] / l) * t, from[1] + (d[1] / l) * t, from[2] + (d[2] / l) * t];
   }
-  emit('enemyShot', { e, from, end, hit, head });
+  emit('enemyShot', { e, from, end, hit, head, surf: hit ? null : surface(end[0], end[1], end[2]) });
   if (hit) hurtPlayer(head);
 }
 
@@ -284,14 +284,14 @@ function hurtPlayer(head) {
 }
 
 // El jugador impacta a un enemigo: cabeza = muerte (el casco absorbe el primer tiro); cuerpo = -1 vida.
-export function damageEnemy(e, head, pt) {
+export function damageEnemy(e, head, pt, dir) {
   e.hitT = 0.35;
   if (head) {
-    if (e.helmet) { e.helmet = false; emit('helmet', { e, pt }); retreat(e); return; }
+    if (e.helmet) { e.helmet = false; emit('helmet', { e, pt, dir }); retreat(e); return; }
     e.hp = 0;
   } else e.hp -= 1;
-  if (e.hp > 0) { e.acc *= 0.7; emit('hit', { e, head, pt }); retreat(e); return; }
+  if (e.hp > 0) { e.acc *= 0.7; emit('hit', { e, head, pt, dir }); retreat(e); return; }
   e.alive = false; e.aiming = false; e.moving = false; e.deadT = 0;
-  emit('kill', { e, head, pt });
+  emit('kill', { e, head, pt, dir });
   if (!S.enemies.some((o) => o.active && o.alive)) { S.state = 'win'; emit('win', { time: S.t }); }
 }

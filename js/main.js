@@ -1,11 +1,12 @@
 // Punto de entrada: une lógica, vista, audio e interfaz. Bucle con Delta Time y calidad adaptable.
 import { CFG, TIERS, LEVELS } from './config.js';
 import * as core from './game-core.js';
-import { stats, reload, updateCombat, aimAssist } from './game-combat.js';
+import { stats, reload, updateCombat, aimAssist, spread } from './game-combat.js';
 import { loadModel, loadMixamo, loadProps } from './loader.js';
 import { createView } from './view-scene.js';
 import { loadFps } from './view-fps.js';
 import { createFx } from './view-fx.js';
+import { rayWorld, surface } from './game-geom.js';
 import { input, initInput, poll, resetCrouch } from './input.js';
 import { initAudio, sfx, music } from './audio.js';
 import { loadSave, writeSave } from './save.js';
@@ -36,28 +37,48 @@ async function boot() {
   try { view = createView(canvas, tier, model, fpsData, props); } catch (e) { // si el render avanzado falla, reintentar en calidad baja
     console.warn('createView falló, reintento en baja', e); tier = 'low'; view = createView(canvas, 'low', model, fpsData, props);
   }
-  const fx = createFx(view.scene, view.camera);
+  const fx = createFx(view.scene, view.camera, view);
+  window.headshot.fx = fx; window.headshot.view = view; // depuración
   let slowT = 0, endTimer = 0; // cámara lenta al terminar el nivel
 
   // ----- Eventos de la lógica -> efectos, sonido y UI -----
+  const fq = { low: 0.5, medium: 0.75, high: 1 };
+  const applyTier = () => { view.setQuality(tier); fx.setQuality(fq[tier] || 1); };
+  applyTier(); fx.setBlood(data.blood);
+  fx.onTink = (v) => sfx.tink(v);
+  const imp = (pt, s) => { if (!s) return; fx.impact(pt, s.n, s.kind); sfx.imp(s.kind); };
+  // Sangre que salpica en la pared/suelo detrás del enemigo, en la dirección del disparo.
+  const splatBehind = (pt, dir, size) => {
+    if (!dir) return;
+    const t = rayWorld(pt[0], pt[1], pt[2], dir[0], dir[1], dir[2]);
+    if (t > 9) return;
+    const q = [pt[0] + dir[0] * t, pt[1] + dir[1] * t, pt[2] + dir[2] * t], sf = surface(q[0], q[1], q[2]);
+    fx.splat(q, sf.n, size);
+  };
   on('shot', (d) => {
     sfx.shot(); music.duck(); view.shot(); fx.shoot(d.end);
-    if (!d.hit) fx.burst(...d.end, 2.4, 1.6, 0.6, 7, 3.5); // chispas en la pared/caja
+    if (!d.hit) setTimeout(() => imp(d.end, d.surf), 40);
   });
   on('enemyShot', (d) => {
     music.duck();
     const from = view.gunPos(d.e.id) || d.from; view.fire(d.e.id);
     sfx.eshot(); fx.shoot(d.end, from);
-    fx.burst(...from, 3, 2, 0.8, 6, 2);
-    if (!d.hit) fx.burst(...d.end, 2.4, 1.6, 0.6, 6, 3);
+    if (!d.hit) imp(d.end, d.surf);
   });
-  on('hit', (d) => { sfx.hit(); ui.hitmarker(false, false); fx.burst(...d.pt, 1.6, 0.1, 0.05, 12, 3); });
-  on('helmet', (d) => { sfx.head(); ui.hitmarker(false, true); fx.burst(...d.pt, 3, 2.6, 1.6, 22, 5); ui.toast('¡Casco fuera! Otro tiro a la cabeza'); });
-  on('kill', (d) => { sfx.kill(); ui.hitmarker(true, d.head); fx.burst(...d.pt, 1.8, 0.08, 0.04, 34, 5); });
+  on('hit', (d) => { sfx.hit(); ui.hitmarker(false, false); fx.blood(d.pt, d.dir || [0, 0, 0], 1); splatBehind(d.pt, d.dir, 0.4); });
+  on('helmet', (d) => {
+    sfx.helmet(); ui.hitmarker(false, true); fx.impact(d.pt, d.dir ? [-d.dir[0], -d.dir[1], -d.dir[2]] : [0, 1, 0], 'metal', 1.5, false);
+    ui.toast('¡Casco fuera! Otro tiro a la cabeza');
+  });
+  on('kill', (d) => {
+    d.head ? sfx.killHead() : sfx.kill(); sfx.hit(); ui.hitmarker(true, d.head);
+    fx.blood(d.pt, d.dir || [0, 0, 0], d.head ? 2.4 : 1.5); splatBehind(d.pt, d.dir, d.head ? 0.8 : 0.55);
+    const x = d.e.x, z = d.e.z; setTimeout(() => fx.pool(x, z), 500); // el charco crece bajo el cuerpo
+  });
   on('hurt', (d) => { sfx.hurt(); ui.hurt(); fx.shake = d.head ? 1 : 0.6; if (!d.head) ui.toast('Herido: un tiro más y caes'); });
-  on('reload', () => sfx.reload());
+  on('reload', () => { const r = CFG.weapon.reload; sfx.magOut(r * 0.22); sfx.magIn(r * 0.62); sfx.slide(r * 0.86); });
   on('empty', () => sfx.empty());
-  on('level', (i) => { ui.banner(LEVELS[i].name.toUpperCase(), 1600); sfx.wave(); });
+  on('level', (i) => { fx.clear(); ui.banner(LEVELS[i].name.toUpperCase(), 1600); sfx.wave(); });
   const finish = () => { slowT = 1.1; endTimer = 1.3; };
   on('win', finish);
   on('over', finish);
@@ -66,8 +87,9 @@ async function boot() {
   const sel = $('quality'); sel.value = data.quality;
   sel.onchange = () => {
     data.quality = sel.value; writeSave(data);
-    tier = sel.value === 'auto' ? autoTier() : sel.value; view.setQuality(tier);
+    tier = sel.value === 'auto' ? autoTier() : sel.value; applyTier();
   };
+  const bl = $('blood'); bl.value = data.blood; bl.onchange = () => { data.blood = bl.value; writeSave(data); fx.setBlood(data.blood); };
   const mus = $('music'); mus.value = data.music ? '1' : '0'; music.setOn(false); // empieza al pulsar Jugar (gesto del usuario)
   mus.onchange = () => { data.music = mus.value === '1'; writeSave(data); music.setOn(data.music && S.state !== 'menu'); };
   const note = () => 'Nivel ' + (data.level + 1) + ': ' + LEVELS[data.level % LEVELS.length].name;
@@ -102,6 +124,7 @@ async function boot() {
   ui.menu('HEADSHOT', 'Jugar', ''); syncCont(false);
 
   // ----- Bucle principal con Delta Time -----
+  const xh = $('xh'); let gap = 5;
   let prev = performance.now(), acc = 0, frames = 0, warm = 2;
   function frame(now) {
     requestAnimationFrame(frame);
@@ -130,6 +153,9 @@ async function boot() {
     } else core.update(dt, input);
     input.dx = input.dy = 0; input.reload = false;
     fx.update(dt); music.update(raw);
+    // retícula reactiva: se abre al moverte, al estar herido y con el retroceso; se cierra al agacharte; con zoom solo queda el punto
+    gap += (5 + spread() * 650 + fx.kick * 8 - gap) * Math.min(1, raw * 14);
+    xh.style.setProperty('--g', gap.toFixed(1) + 'px'); xh.classList.toggle('zoom', S.zoom);
     const st = stats();
     view.sync(S, now / 1000, dt, fx, S.reloading ? 1 - S.reloadT / st.reload : -1);
     if (S.state !== 'menu') ui.hud(S, st, LEVELS[S.level].name);
@@ -141,7 +167,7 @@ async function boot() {
       const fps = frames / acc; acc = 0; frames = 0;
       if (warm > 0) warm--;
       else if (S.state === 'play' && fps < 40 && data.quality === 'auto' && TIERS.indexOf(tier) > 0) {
-        tier = TIERS[TIERS.indexOf(tier) - 1]; view.setQuality(tier); warm = 1;
+        tier = TIERS[TIERS.indexOf(tier) - 1]; applyTier(); warm = 1;
         ui.toast('Calidad ajustada: ' + tier);
       }
     }
