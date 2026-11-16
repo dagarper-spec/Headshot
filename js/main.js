@@ -11,6 +11,7 @@ import { input, initInput, poll, resetCrouch } from './input.js';
 import { initAudio, sfx, music } from './audio.js';
 import { loadSave, writeSave } from './save.js';
 import { ui } from './ui.js';
+import { reward, applyUpgrades, renderShop } from './shop.js';
 
 const { S, on } = core;
 const canvas = document.getElementById('c');
@@ -94,6 +95,13 @@ async function boot() {
   const bl = $('blood'); bl.value = data.blood; bl.onchange = () => { data.blood = bl.value; writeSave(data); fx.setBlood(data.blood); };
   const mus = $('music'); mus.value = data.music ? '1' : '0'; music.setOn(false); // empieza al pulsar Jugar (gesto del usuario)
   mus.onchange = () => { data.music = mus.value === '1'; writeSave(data); music.setOn(data.music && S.state !== 'menu'); };
+  // ----- Tienda -----
+  applyUpgrades(data);
+  let shopFrom = 'menu';
+  const openShop = (from) => { shopFrom = from; ui.hide(from); renderShop(data, () => writeSave(data)); ui.show('shop'); };
+  $('shopBtn').onclick = () => openShop('over');
+  $('menuShop').onclick = () => openShop('menu');
+  $('shopBack').onclick = () => { ui.hide('shop'); ui.show(shopFrom); syncCont(S.state === 'pause'); };
   const note = () => 'Nivel ' + (data.level + 1) + ': ' + LEVELS[data.level % LEVELS.length].name;
   const begin = (lvl) => {
     try { initAudio(); } catch { /* sin audio */ }
@@ -109,6 +117,7 @@ async function boot() {
   const syncCont = (paused) => {
     const c = $('cont'); c.textContent = 'Continuar: nivel ' + (data.level + 1);
     c.classList[!paused && data.level > 0 ? 'remove' : 'add']('hide');
+    $('menuShop').classList[!paused && (data.level > 0 || data.coins > 0) ? 'remove' : 'add']('hide');
   };
   $('again').onclick = () => begin(S.state === 'win' ? S.level + 1 : S.level); // victoria -> siguiente; derrota -> reintentar
   addEventListener('keydown', (e) => { if (e.code === 'Enter' && !$('over').classList.contains('hide')) $('again').click(); });
@@ -137,9 +146,11 @@ async function boot() {
     if (endTimer > 0 && (endTimer -= raw) <= 0) { // mostrar resultado tras la cámara lenta
       if (document.pointerLockElement) document.exitPointerLock();
       if (S.state === 'win') {
+        const r = reward(S.level, S.t); data.coins += r;
         data.level = Math.max(data.level, (S.level + 1) % LEVELS.length); writeSave(data);
-        ui.end(true, 'NIVEL SUPERADO', 'Tiempo <b>' + S.t.toFixed(1) + ' s</b>', 'Siguiente nivel');
-      } else ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar');
+        ui.end(true, 'NIVEL SUPERADO', 'Tiempo <b>' + S.t.toFixed(1) + ' s</b> (par ' + LEVELS[S.level].par + ' s)<br>Recompensa <b>+$' + r + '</b> · Total <b>$' + data.coins + '</b>', 'Siguiente nivel');
+        ui.show('shopBtn');
+      } else { ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar'); ui.hide('shopBtn'); }
     }
     S.zoom = input.zoom && S.state === 'play';
     S.crouch = input.crouch && S.state === 'play';

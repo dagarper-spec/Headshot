@@ -41,6 +41,7 @@
   <button id="start" class="big" disabled>Cargando…</button>
   <button id="cont" class="big alt hide"></button>
   <button id="restart" class="big alt hide">Reiniciar nivel</button>
+  <button id="menuShop" class="big alt hide">Tienda</button>
   <label class="q">Calidad
     <select id="quality">
       <option value="auto">Auto</option><option value="high">Alta</option>
@@ -54,10 +55,18 @@
   Móvil: ruleta izquierda mover · ruleta derecha mirar (un toque rápido dispara) · MIRA zoom · AGACHAR</p>
 </div>
 
+<div id="shop" class="ov hide">
+  <h1>TIENDA</h1>
+  <div id="coins"></div>
+  <div id="items"></div>
+  <button id="shopBack" class="big">Volver</button>
+</div>
+
 <div id="over" class="ov hide">
   <h1 id="ot">HAS CAÍDO</h1>
   <p id="ostats" class="sub"></p>
   <button id="again" class="big">Jugar de nuevo</button>
+  <button id="shopBtn" class="big alt hide">Tienda</button>
 </div>
 
 <script>

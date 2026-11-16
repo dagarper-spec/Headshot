@@ -129,3 +129,6 @@ export function createFps(gltf) {
     },
   };
 }
+
+// Cosmético: cambia el color de los guantes (hex) o restaura el original ('' / 0).
+export function setGlove(hex) { const m = mats(); m.glove.color.set(hex || 0x1b1c1f); }

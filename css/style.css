@@ -40,9 +40,9 @@ html,body{height:100%;overflow:hidden;background:#000;color:#e8e6e1;touch-action
 #toast.on{opacity:1}
 
 /* Controles táctiles: todo se escala con --pad (según el lado menor de la pantalla) para que no se solape */
-#touch{position:fixed;inset:0;pointer-events:none;--pad:clamp(84px,28vmin,122px);--b:calc(var(--pad)*.56);--m:calc(var(--pad)*.2);
+#touch{position:fixed;inset:0;pointer-events:none;--pad:clamp(92px,34vmin,142px);--b:calc(var(--pad)*.5);--m:calc(var(--pad)*.2);
   --bt:max(16px,env(safe-area-inset-bottom));--sl:max(20px,env(safe-area-inset-left));--sr:max(20px,env(safe-area-inset-right))}
-@media (orientation:portrait){#touch{--pad:clamp(84px,26vw,118px);--b:calc(var(--pad)*.5);--bt:max(18px,env(safe-area-inset-bottom))}}
+@media (orientation:portrait){#touch{--pad:clamp(90px,30vw,128px);--b:calc(var(--pad)*.42);--bt:max(18px,env(safe-area-inset-bottom))}}
 .pad{position:absolute;pointer-events:auto;width:var(--pad);height:var(--pad);border-radius:50%;border:2px solid #fff4;background:#ffffff14;bottom:var(--bt)}
 .pad i{position:absolute;left:calc(var(--pad)*.27);top:calc(var(--pad)*.27);width:calc(var(--pad)*.46);height:calc(var(--pad)*.46);border-radius:50%;background:#fff5;border:2px solid #fff6;
   display:flex;align-items:center;justify-content:center;font-style:normal;font-size:calc(var(--pad)*.11);color:#fffd}
@@ -54,9 +54,9 @@ html,body{height:100%;overflow:hidden;background:#000;color:#e8e6e1;touch-action
   background:#34495e99;border:2px solid #fff6;width:var(--b);height:var(--b);font-size:calc(var(--b)*.24);letter-spacing:0}
 #bZoom{left:calc(var(--sl) + var(--pad)/2 - var(--b)/2);bottom:calc(var(--bt) + var(--pad) + 10px);background:#2c3e5099}
 #bZoom.on{background:#2980b9cc}
-#bCrouch{left:calc(var(--sl) + var(--pad) + 10px);bottom:var(--bt);font-size:calc(var(--b)*.19)}
+#bCrouch{left:calc(var(--sl) + var(--pad) + 8px);bottom:var(--bt);font-size:calc(var(--b)*.19)}
 #bCrouch.on{background:#27ae60cc}
-#bRel{right:calc(var(--sr) + var(--pad) + 10px);bottom:var(--bt)}
+#bRel{right:calc(var(--sr) + var(--pad) + 8px);bottom:var(--bt)}
 
 /* Pantallas */
 .ov{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
@@ -86,11 +86,22 @@ html,body{height:100%;overflow:hidden;background:#000;color:#e8e6e1;touch-action
   width:46px;height:46px;border-radius:50%;background:#0007;border:2px solid #fff6;display:flex;align-items:center;justify-content:center;
   font-size:18px;letter-spacing:0;cursor:pointer}
 .big.alt{background:#34495e;box-shadow:none;font-size:18px;padding:10px 30px}
-body.touch #ammo{right:max(20px,env(safe-area-inset-right));bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(84px,28vmin,122px) + 10px)}
+body.touch #ammo{right:max(20px,env(safe-area-inset-right));bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(92px,34vmin,142px) + 10px)}
 @media (orientation:portrait){
-  body.touch #ammo{bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(84px,26vw,118px) + 10px)}
+  body.touch #ammo{bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(90px,30vw,128px) + 10px)}
   #hp{width:36vw;height:18px}
   #wv{top:calc(max(14px,env(safe-area-inset-top)) + 28px);font-size:13px;white-space:nowrap}
   #score{font-size:20px}#combo{font-size:16px}
 }
 @media (max-height:360px) and (orientation:landscape){#mag{font-size:34px}#score{font-size:20px}#bPause{top:calc(max(12px,env(safe-area-inset-top)) + 46px);width:38px;height:38px}}
+
+/* Tienda */
+#shop{overflow-y:auto;justify-content:flex-start;padding-top:max(20px,env(safe-area-inset-top));touch-action:pan-y}
+#shop h1{font-size:clamp(34px,8vw,64px)}
+#coins{font-size:26px;color:#ffd75e}
+#items{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:760px}
+.item{font:inherit;color:#eee;width:210px;padding:14px 12px;background:#161a20;border:1px solid #ffb34766;border-radius:6px;display:flex;flex-direction:column;gap:6px;cursor:pointer;text-align:center}
+.item b{color:#ffb347;font-size:17px}.item span{color:#aaa;font-size:13px}.item em{font-style:normal;color:#ffd75e;font-size:18px}
+.item.own{border-color:#6fdc8c88;cursor:default}.item.own em{color:#6fdc8c}
+.item.no{opacity:.45}
+.item i{display:block;width:26px;height:26px;border-radius:50%;margin:0 auto;border:2px solid #fff6}
