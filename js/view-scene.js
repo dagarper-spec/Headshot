@@ -10,6 +10,7 @@ import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { CFG, QUALITY } from './config.js';
+import { createItems, buildShield } from './view-items.js';
 import { makeMaterials, uvs } from './view-textures.js';
 import { buildSoldier, buildViewPistol, poseSoldier } from './view-models.js';
 import { createMixamoSoldier } from './view-mixamo.js';
@@ -134,12 +135,15 @@ export function createView(canvas, tier, model, fpsData, props) {
         const a = s.mixer.clipAction(clip); a.play(); a.time = Math.random() * clip.duration;
       }
     } else { const h = buildSoldier(); g.add(h); s.h = h.userData; s.flash = h.userData.flash; }
+    s.shield = buildShield(); s.shield.position.set(0.12, 1.0, 0.5); s.shield.visible = false; g.add(s.shield);
     s.laser = new THREE.Mesh(lg, new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 0.2, 0.1), transparent: true,
       blending: THREE.AdditiveBlending, depthWrite: false }));
     s.dot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 0.4, 0.25) }));
     s.laser.visible = s.dot.visible = false; scene.add(s.laser, s.dot); // destello rojo en la boca del arma
     g.visible = false; scene.add(g); slots.push(s);
   }
+
+  const items = createItems(scene, 4, 6);
 
   // ---------- Calidad adaptable ----------
   let vh = innerHeight; // altura real de render en píxeles (la usan las partículas)
@@ -194,6 +198,7 @@ export function createView(canvas, tier, model, fpsData, props) {
         gun.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.14, -0.38 + fx.kick * 0.05 + 0.04 * zk);
         gun.rotation.set(fx.kick * 0.22 - rl * 0.8, 0, rl * 0.5);
       }
+      items.sync(S, time);
       lamps[1].intensity = 380 * (Math.random() < 0.03 ? 0.3 : 1); // lámpara que parpadea
       panels[1].color.setScalar(lamps[1].intensity < 380 ? 0.8 : 4);
       const k = Math.min(1, dt * 9);
@@ -207,6 +212,8 @@ export function createView(canvas, tier, model, fpsData, props) {
         s.aim += ((e.aiming && e.alive ? 1 : 0) - s.aim) * k;
         s.mv += ((e.moving && e.alive ? 1 : 0) - s.mv) * k;
         s.ph += dt * e.spd * 2.8 * s.mv;
+        s.shield.visible = !!e.shield && e.alive; // escudo: arriba al avanzar, abajo al apuntar
+        s.shield.position.y += ((e.shieldUp ? 1.0 : 0.55) - s.shield.position.y) * k; s.shield.rotation.x += ((e.shieldUp ? 0 : 0.7) - s.shield.rotation.x) * k;
         const fl = e.hitT > 0 && e.alive ? 0.5 : 0;
         s.flash.forEach((m) => m.emissive.setRGB(fl, fl * 0.8, fl * 0.7));
         if (s.mx) s.mx.update(e, dt);

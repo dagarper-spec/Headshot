@@ -170,6 +170,15 @@ export function createFx(scene, camera, view) {
   };
 
   // Limpia los decales al empezar un nivel.
+  // Explosión de granada/mina: bola de fuego, chispas, humo y sacudida según la distancia a la cámara.
+  const bl = new THREE.PointLight(0xff9040, 0, 14, 2); scene.add(bl); let blT = 0;
+  fx.boom = (x, y, z) => {
+    for (let i = 0; i < cnt(40); i++) { const a = Math.random() * 6.283, v = 2 + Math.random() * 7; em(spark, x, y, z, Math.cos(a) * v, 1 + Math.random() * 6, Math.sin(a) * v, 0.09, 0.02, 0.5 + Math.random() * 0.4, 5, 2.2, 0.6, 1, 14, 1); }
+    for (let i = 0; i < cnt(26); i++) { const a = Math.random() * 6.283, v = Math.random() * 3.5; em(dust, x, y + 0.2, z, Math.cos(a) * v, 0.6 + Math.random() * 2.5, Math.sin(a) * v, 0.35, 1.5, 1.4 + Math.random(), 0.18, 0.16, 0.15, 0.7, -0.4, 1.4); }
+    for (let i = 0; i < cnt(10); i++) em(spark, x + rnd(0.5), y + 0.2, z + rnd(0.5), rnd(2), 0.5 + Math.random(), rnd(2), 0.9, 0.3, 0.25, 6, 3, 0.9, 1, 0, 3);
+    blT = 0.25; bl.position.set(x, y + 0.8, z);
+    const d = Math.hypot(camera.position.x - x, camera.position.z - z); fx.shake = Math.max(fx.shake, Math.min(1.6, 9 / (d + 2)));
+  };
   fx.clear = () => { for (const m of [...holes, ...splats, ...pools]) { m.visible = false; m.userData.grow = -1; } for (const c of C) { c.life = 0; c.p.y = -50; } for (const s of [spark, dust]) s.life.fill(0); };
   fx.setQuality = (q) => { fx.q = q; };
 
@@ -215,6 +224,7 @@ export function createFx(scene, camera, view) {
       t.userData.life -= dt; t.material.opacity = Math.max(0, t.userData.life / 0.07);
       if (t.userData.life <= 0) t.visible = false;
     }
+    blT -= dt; bl.intensity = blT > 0 ? 260 * blT / 0.25 : 0;
     fx.flashT -= dt; flash.intensity = fx.flashT > 0 ? 30 : 0;
     fx.kick = Math.max(0, fx.kick - dt * 9); fx.shake = Math.max(0, fx.shake - dt * 1.4);
   };

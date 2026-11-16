@@ -13,11 +13,17 @@ export const S = {
   hp: 2, maxHp: 2, mag: 6, reloadT: 0, fireT: 0, reloading: false, latch: false,
   player: { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 },
   enemies: [], // Object Pool reutilizado en cada nivel
+  gren: [], mines: [],            // pools de granadas y minas
+  st: { reloads: 0, headHits: 0, dmg: 0 }, // estadísticas del intento (para las estrellas)
+  vest: 0, magBonus: 0, radarT: 0, chest: null, chestCoins: 0, pre: { vest: false, med: false },
 };
+for (let i = 0; i < 4; i++) S.gren.push({ on: false, x: 0, z: 0, sx: 0, sz: 0, t: 0, T: 1, y: 1.6 });
+for (let i = 0; i < 6; i++) S.mines.push({ on: false, x: 0, z: 0, arm: 0 });
 for (let i = 0; i < CFG.pool; i++) {
   S.enemies.push({ id: i, active: false, alive: false, x: 0, z: 0, hp: 2, helmet: false, crouch: true, state: 'hide',
     next: 'hide', timer: 0, react: 0, aimT: 0, aimK: 0, shots: 0, aiming: false, moving: false, sees: false, hitT: 0,
-    face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: 3, sp: 0, r: 0.3, h: 1.38, deadT: 0, acc: 0.4 });
+    face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: 3, sp: 0, r: 0.3, h: 1.38, deadT: 0, acc: 0.4,
+    role: 'rifle', boss: false, shield: false, shieldUp: false, ph: 1, p2: 0, gcd: 3, mineT: 3, lastCover: null });
 }
 
 // Puntos de cobertura precalculados: a lo largo del perímetro de cada contenedor/pilar (a 0,7 m de distancia).
@@ -100,12 +106,19 @@ export function startLevel(i) {
   Object.assign(S, { t: 0, grace: 3, deathT: 0, hp: CFG.player.hp, maxHp: CFG.player.hp, mag: CFG.weapon.mag,
     reloading: false, fireT: 0, latch: false, zoom: false, crouch: false, eye: CFG.eye, state: 'play' });
   Object.assign(S.player, { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 });
+  S.st = { reloads: 0, headHits: 0, dmg: 0 }; S.vest = S.pre.vest ? 1 : 0; S.magBonus = 0; S.radarT = 0; S.chestCoins = 0;
+  if (S.pre.med) { S.maxHp++; S.hp++; }
+  S.pre = { vest: false, med: false };
+  S.chest = lv.chest ? { x: lv.chest[0], z: lv.chest[1], open: false, prog: 0 } : null;
+  S.gren.forEach((g) => { g.on = false; }); S.mines.forEach((m) => { m.on = false; });
   S.enemies.forEach((e) => { e.active = false; e.alive = false; });
   lv.enemies.forEach((d, k) => {
     const e = S.enemies[k];
     Object.assign(e, { active: true, alive: true, x: d.x, z: d.z, hp: 2, helmet: !!d.helmet, crouch: true, state: 'hide',
       next: 'hide', timer: 1.5 + k * 0.7, react: lv.react, aimT: 0, aimK: 0, shots: 0, aiming: false, moving: false,
-      sees: false, hitT: 0, face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: CFG.enemy.speed, deadT: 0, acc: lv.acc });
+      sees: false, hitT: 0, face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: CFG.enemy.speed, deadT: 0, acc: lv.acc,
+      role: d.role || 'rifle', boss: !!d.boss, shield: !!d.shield, shieldUp: !!d.shield, ph: 1, p2: 0, gcd: 3, mineT: 4, lastCover: null });
+    if (e.role === 'shield') e.spd = CFG.enemy.speed * 0.6;
     retreat(e);
   });
   emit('level', S.level);
@@ -129,6 +142,24 @@ export function update(dt, inp) {
   S.eye += ((S.crouch ? CFG.eyeCrouch : CFG.eye) - S.eye) * Math.min(1, dt * 10); // agacharse/levantarse suave
   movePlayer(dt, inp);
   updateEnemies(dt);
+  updateExplosives(dt); updateChest(dt);
+}
+
+// Cofre: quédate a menos de 1,6 m durante 1,5 s. Premios solo para esta partida.
+function updateChest(dt) {
+  S.radarT = Math.max(0, S.radarT - dt);
+  const ch = S.chest; if (!ch || ch.open) return;
+  const near = Math.hypot(S.player.x - ch.x, S.player.z - ch.z) < 1.6;
+  ch.prog = near ? ch.prog + dt : Math.max(0, ch.prog - dt * 2);
+  if (ch.prog < 1.5) return;
+  ch.open = true;
+  const r = Math.random() * 100; let kind, amount = 0;
+  if (r < 20) { kind = 'heal'; S.maxHp++; S.hp++; }
+  else if (r < 40) { kind = 'vest'; S.vest = 1; }
+  else if (r < 60) { kind = 'mag'; S.magBonus += 2; S.mag += 2; }
+  else if (r < 85) { kind = 'money'; amount = 60 + 10 * Math.floor(Math.random() * 10); S.chestCoins += amount; }
+  else { kind = 'radar'; S.radarT = 3.5; }
+  emit('chest', { kind, amount });
 }
 
 function movePlayer(dt, inp) {
@@ -164,17 +195,30 @@ export function resolve(o, r) {
 
 // ---------- IA enemiga: esconderse -> asomar -> apuntar (aviso láser) -> disparar -> cambiar de cobertura ----------
 
+// Táctica efectiva: el jefe cambia de táctica con cada fase.
+const tac = (e) => (e.boss ? ['flank', 'shield', 'flank'][e.ph - 1] : e.role);
+const fwd = (e) => [Math.sin(e.face), Math.cos(e.face)];
+// ¿El escudo detiene este disparo? Solo de frente y con el escudo levantado (baja al apuntar).
+export function shieldBlocks(e, dir) {
+  if (!e.shield || !e.shieldUp) return false;
+  const l = Math.hypot(dir[0], dir[2]) || 1, f = fwd(e);
+  return (f[0] * dir[0] + f[1] * dir[2]) / l < -0.35;
+}
+
 // Mejor cobertura: oculta (agachado) la vista del jugador, a distancia razonable y cerca del enemigo.
 function pickCover(e) {
   const p = S.player;
   let best = null, bs = 1e9;
   for (const c of SPOTS) {
     const dp = Math.hypot(c.x - p.x, c.z - p.z);
-    if (dp < 5 || dp > 21) continue;
+    if (dp < (tac(e) === 'shield' ? 3 : 5) || dp > 21) continue;
     if (!blocked(c.x, 1.25, c.z, p.x, S.eye, p.z)) continue;
     if (S.enemies.some((o) => o !== e && o.active && o.alive && o.goal && Math.hypot(o.goal.x - c.x, o.goal.z - c.z) < 1.5)) continue;
-    const de = Math.hypot(c.x - e.x, c.z - e.z);
-    const sc = de + Math.random() * 5 + (de < 1 ? 6 : 0);
+    const de = Math.hypot(c.x - e.x, c.z - e.z), t = tac(e);
+    if (t === 'flank' && e.lastCover && Math.hypot(c.x - e.lastCover.x, c.z - e.lastCover.z) < 4.5) continue; // cambia de lado de verdad
+    let sc = de + Math.random() * 5 + (de < 1 ? 6 : 0);
+    if (t === 'flank') sc = de * 0.4 + Math.random() * 7 + (de < 1 ? 6 : 0);
+    else if (t === 'shield') sc = dp + Math.random() * 2.5 + (de < 1 ? 4 : 0); // se acerca de cobertura en cobertura
     if (sc < bs) { bs = sc; best = c; }
   }
   return best;
@@ -193,14 +237,46 @@ function pickPeek(c) {
 function retreat(e) {
   const c = pickCover(e);
   e.aiming = false; e.moveT = 0;
-  if (c) { e.cover = c; setGoal(e, c, 'hide'); }
+  if (c) { e.lastCover = e.cover; e.cover = c; setGoal(e, c, 'hide'); plantMine(e); }
   else { e.state = 'hide'; e.timer = 1; e.crouch = true; }
+}
+
+// ---------- Granadas y minas ----------
+const boom = (x, z, y = 0.3) => {
+  emit('boom', { x, z, y });
+  const p = S.player, d = Math.hypot(p.x - x, p.z - z);
+  if (d < 3.2 && (d < 1.2 || !blocked(x, 0.5, z, p.x, S.eye - 0.4, p.z))) hurtPlayer(false);
+};
+function throwGrenade(e) {
+  const g = S.gren.find((o) => !o.on); if (!g) return;
+  const p = S.player; let tx = p.x + (Math.random() - 0.5) * 1.6, tz = p.z + (Math.random() - 0.5) * 1.6;
+  if (!free(tx, tz, 0.3)) { const n = nearestWalk(cellOf(tx), cellOf(tz)); if (n) { tx = centerOf(n[0]); tz = centerOf(n[1]); } }
+  Object.assign(g, { on: true, sx: e.x, sz: e.z, x: e.x, z: e.z, tx, tz, t: 0, T: Math.max(0.7, Math.min(1.4, Math.hypot(tx - e.x, tz - e.z) / 9)), y: 1.6 });
+  emit('throw', { e, tx, tz, T: g.T });
+}
+function plantMine(e) {
+  if (!(e.boss && e.ph === 3) || e.mineT > 0) return;
+  const m = S.mines.find((o) => !o.on); if (!m) return;
+  e.mineT = 5; Object.assign(m, { on: true, x: e.x, z: e.z, arm: 1.2 }); emit('mine', { x: m.x, z: m.z });
+}
+function updateExplosives(dt) {
+  for (const g of S.gren) {
+    if (!g.on) continue;
+    g.t += dt; const u = Math.min(1, g.t / g.T);
+    g.x = g.sx + (g.tx - g.sx) * u; g.z = g.sz + (g.tz - g.sz) * u; g.y = Math.max(0.1, 1.6 * (1 - u) + 8.8 * u * (1 - u));
+    if (g.t >= g.T + 1.4) { g.on = false; boom(g.x, g.z); }
+  }
+  const p = S.player;
+  for (const m of S.mines) {
+    if (!m.on) continue; m.arm -= dt;
+    if (m.arm <= 0 && Math.hypot(p.x - m.x, p.z - m.z) < 0.9) { m.on = false; boom(m.x, m.z); }
+  }
 }
 
 function beginAim(e) {
   const lv = lvl();
   e.state = 'aim'; e.crouch = false; e.moving = false; e.aiming = true;
-  e.aimT = e.aimDur = lv.aim; e.shots = Math.random() < lv.burst ? 2 : 1; e.lost = 0;
+  e.aimT = e.aimDur = lv.aim; e.shots = e.boss && e.ph === 3 ? 3 : Math.random() < lv.burst ? 2 : 1; e.lost = 0;
 }
 
 function turn(e, target, dt) { // giro suave hacia un ángulo
@@ -215,7 +291,8 @@ function updateEnemies(dt) {
   for (const e of S.enemies) {
     if (!e.active) continue;
     if (!e.alive) { e.deadT += dt; if (e.deadT > 3) e.active = false; continue; }
-    e.hitT -= dt; e.timer -= dt;
+    e.hitT -= dt; e.timer -= dt; e.gcd -= dt; e.mineT -= dt;
+    e.shieldUp = e.shield && e.state !== 'aim'; // baja el escudo para apuntar
     e.h = e.crouch ? CFG.enemy.hCrouch : e.aiming ? CFG.enemy.hAim : CFG.enemy.h;
     e.sees = !blocked(e.x, e.crouch ? 1.25 : 1.65, e.z, p.x, S.eye, p.z);
     const toP = Math.atan2(p.x - e.x, p.z - e.z);
@@ -225,7 +302,9 @@ function updateEnemies(dt) {
       if (e.sees) { e.react -= dt; if (e.react <= 0) beginAim(e); }
       else {
         e.react = lv.react;
-        if (e.timer <= 0) setGoal(e, pickPeek(e.cover || e), 'aim');
+        const t = tac(e);
+        if (e.timer <= 0 && e.gcd <= 0 && (t === 'grenadier' || (e.boss && e.ph === 2))) { throwGrenade(e); e.gcd = e.boss ? 3.5 + Math.random() : 4.5 + Math.random() * 1.5; e.timer = 1.2; }
+        else if (e.timer <= 0) setGoal(e, pickPeek(e.cover || e), 'aim');
       }
     } else if (e.state === 'move') {
       const last = !e.path || e.path.length <= 1, wp = e.path && e.path.length ? e.path[0] : e.goal;
@@ -235,7 +314,7 @@ function updateEnemies(dt) {
       if ((last && gd < 0.2) || e.moveT > 8) {
         e.moving = false;
         if (e.next === 'aim') beginAim(e);
-        else { e.state = 'hide'; e.crouch = true; e.timer = lv.hide[0] + Math.random() * (lv.hide[1] - lv.hide[0]); e.react = lv.react; }
+        else { e.state = 'hide'; e.crouch = true; e.timer = (lv.hide[0] + Math.random() * (lv.hide[1] - lv.hide[0])) * (tac(e) === 'flank' ? 0.6 : 1); e.react = lv.react; }
       } else if (!last && gd < 0.25) e.path.shift(); // siguiente punto de la ruta
       else {
         turn(e, Math.atan2(gx, gz), dt);
@@ -278,7 +357,8 @@ function enemyShoot(e) {
 }
 
 function hurtPlayer(head) {
-  S.hp = head ? 0 : S.hp - 1;
+  if (!head && S.vest > 0) { S.vest = 0; emit('vestHit'); return; } // el chaleco temporal absorbe un tiro al cuerpo
+  S.st.dmg++; S.hp = head ? 0 : S.hp - 1;
   emit('hurt', { head });
   if (S.hp <= 0) { S.hp = 0; S.state = 'over'; S.deathT = 0; emit('over', { head }); }
 }
@@ -286,6 +366,17 @@ function hurtPlayer(head) {
 // El jugador impacta a un enemigo: cabeza = muerte (el casco absorbe el primer tiro); cuerpo = -1 vida.
 export function damageEnemy(e, head, pt, dir) {
   e.hitT = 0.35;
+  if (head) S.st.headHits++;
+  if (e.boss && e.ph === 1) { // fase 1: chaleco blindado; solo el casco roto abre la fase 2
+    if (head && e.helmet) { e.helmet = false; e.ph = 2; e.shield = e.shieldUp = true; e.gcd = 1.5; emit('helmet', { e, pt, dir }); emit('phase', { ph: 2 }); }
+    else emit('armor', { e, pt, dir });
+    retreat(e); return;
+  }
+  if (e.boss && e.ph === 2) { // fase 2: dos impactos que superen el escudo lo rompen
+    e.p2++; emit('hit', { e, head, pt, dir });
+    if (e.p2 >= 2) { e.ph = 3; e.shield = e.shieldUp = false; e.spd = CFG.enemy.speed * 1.25; e.mineT = 1; emit('phase', { ph: 3 }); }
+    retreat(e); return;
+  }
   if (head) {
     if (e.helmet) { e.helmet = false; emit('helmet', { e, pt, dir }); retreat(e); return; }
     e.hp = 0;

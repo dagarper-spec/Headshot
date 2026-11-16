@@ -11,7 +11,8 @@ import { input, initInput, poll, resetCrouch } from './input.js';
 import { initAudio, sfx, music } from './audio.js';
 import { loadSave, writeSave } from './save.js';
 import { ui } from './ui.js';
-import { reward, applyUpgrades, renderShop } from './shop.js';
+import { applyUpgrades, renderShop } from './shop.js';
+import { unlocked, evalStars, applyResult, renderLevels } from './progress.js';
 
 const { S, on } = core;
 const canvas = document.getElementById('c');
@@ -68,6 +69,17 @@ async function boot() {
     sfx.eshot(); fx.shoot(d.end, from);
     if (!d.hit) imp(d.end, d.surf);
   });
+  on('shield', () => { sfx.helmet(); });
+  on('armor', (d) => { sfx.armor(); fx.impact(d.pt, [0, 1, 0], 'metal'); });
+  on('vestHit', () => { sfx.armor(); ui.toast('El chaleco ha absorbido el impacto'); });
+  on('throw', (d) => { sfx.pin(); ui.toast('¡Granada!'); [0.5, 0.8, 1.0, 1.15, 1.3, 1.4].forEach((t) => setTimeout(sfx.beep, (d.T + t) * 1000 - 0)); });
+  on('boom', (d) => { fx.boom(d.x, d.y, d.z); sfx.boom(); });
+  on('mine', () => sfx.pin());
+  on('phase', (d) => { sfx.phase(); ui.banner(d.ph === 2 ? 'FASE 2 · ESCUDO' : 'FASE 3 · SIN ARMADURA', 1600); });
+  on('chest', (d) => {
+    sfx.chest();
+    ui.toast({ heal: 'Botiquín: +1 vida', vest: 'Chaleco: absorbe 1 tiro', mag: 'Cargador +2 balas', money: 'Dinero: +$' + d.amount, radar: 'Radar: enemigos marcados' }[d.kind]);
+  });
   on('hit', (d) => { sfx.hit(); ui.hitmarker(false, false); fx.blood(d.pt, d.dir || [0, 0, 0], 1); splatBehind(d.pt, d.dir, 0.4); });
   on('helmet', (d) => {
     sfx.helmet(); ui.hitmarker(false, true); fx.impact(d.pt, d.dir ? [-d.dir[0], -d.dir[1], -d.dir[2]] : [0, 1, 0], 'metal', 1.5, false);
@@ -109,17 +121,28 @@ async function boot() {
     if (!input.touch) canvas.requestPointerLock();
     ui.hide('menu'); ui.hide('over'); ui.show('hud');
     if (input.touch) ui.show('touch');
-    if (S.state === 'pause') S.state = 'play'; else { resetCrouch(); core.startLevel(lvl); }
+    if (S.state === 'pause') S.state = 'play';
+    else { // consumables comprados: se gastan al empezar el nivel
+      data.cons = data.cons || {};
+      if (data.cons.cMed > 0) { data.cons.cMed--; S.pre.med = true; }
+      if (data.cons.cVest > 0) { data.cons.cVest--; S.pre.vest = true; }
+      writeSave(data); resetCrouch(); core.startLevel(lvl);
+    }
   };
   $('start').onclick = () => begin(0); // Jugar: siempre desde el nivel 1 (o continúa si está en pausa)
-  $('cont').onclick = () => begin(data.level);
+  $('cont').onclick = () => { let i = Math.min(data.level, LEVELS.length - 1); while (i > 0 && !unlocked(data, i)) i--; begin(i); };
   // El botón "Continuar: nivel N" solo aparece si ya superaste algún nivel y no estás en pausa.
   const syncCont = (paused) => {
     const c = $('cont'); c.textContent = 'Continuar: nivel ' + (data.level + 1);
     c.classList[!paused && data.level > 0 ? 'remove' : 'add']('hide');
+    $('lvlBtn').classList[paused ? 'add' : 'remove']('hide');
     $('menuShop').classList[!paused && (data.level > 0 || data.coins > 0) ? 'remove' : 'add']('hide');
   };
-  $('again').onclick = () => begin(S.state === 'win' ? S.level + 1 : S.level); // victoria -> siguiente; derrota -> reintentar
+  const openLevels = (from) => { lvFrom = from; ui.hide(from); renderLevels(data, (i) => { ui.hide('levels'); begin(i); }); ui.show('levels'); };
+  let lvFrom = 'menu';
+  $('lvlBtn').onclick = () => openLevels('menu'); $('lvlOver').onclick = () => openLevels('over');
+  $('lvlBack').onclick = () => { ui.hide('levels'); ui.show(lvFrom); };
+  $('again').onclick = () => begin(S.state === 'win' && unlocked(data, S.level + 1) && S.level + 1 < LEVELS.length ? S.level + 1 : S.level); // victoria -> siguiente; derrota -> reintentar
   addEventListener('keydown', (e) => { if (e.code === 'Enter' && !$('over').classList.contains('hide')) $('again').click(); });
   const pause = () => {
     if (S.state !== 'play') return;
@@ -146,11 +169,15 @@ async function boot() {
     if (endTimer > 0 && (endTimer -= raw) <= 0) { // mostrar resultado tras la cámara lenta
       if (document.pointerLockElement) document.exitPointerLock();
       if (S.state === 'win') {
-        const r = reward(S.level, S.t); data.coins += r;
-        data.level = Math.max(data.level, (S.level + 1) % LEVELS.length); writeSave(data);
-        ui.end(true, 'NIVEL SUPERADO', 'Tiempo <b>' + S.t.toFixed(1) + ' s</b> (par ' + LEVELS[S.level].par + ' s)<br>Recompensa <b>+$' + r + '</b> · Total <b>$' + data.coins + '</b>', 'Siguiente nivel');
-        ui.show('shopBtn');
-      } else { ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar'); ui.hide('shopBtn'); }
+        const got = evalStars(S), r = applyResult(data, S.level, got, S.t, S.chestCoins);
+        data.level = Math.max(data.level, Math.min(S.level + 1, LEVELS.length - 1)); writeSave(data);
+        const L = LEVELS[S.level], mk = got.map((g) => (g ? '\u2605' : '\u2606')).join('');
+        const last = S.level + 1 >= LEVELS.length, nxt = !last && unlocked(data, S.level + 1);
+        ui.end(true, last ? 'ZONA SUPERADA' : 'NIVEL SUPERADO', '<span class="stars">' + mk + '</span><br>Tiempo <b>' + S.t.toFixed(1) + ' s</b> (par ' + L.par + ' s) · ' + L.goalText + (got[2] ? ' \u2713' : ' \u2717') +
+          '<br>Recompensa <b>+$' + r.total + '</b>' + (r.bonus ? ' (estrellas +$' + r.bonus + ')' : '') + (r.chest ? ' (baúl +$' + r.chest + ')' : '') + (r.first ? '' : ' · repetición al 50 %') + ' · Total <b>$' + data.coins + '</b>' +
+          (!last && !nxt ? '<br>Siguiente nivel bloqueado: ' + (LEVELS[S.level + 1].boss ? 'necesitas 5 \u2605 en los niveles 1-3' : 'supera este nivel') : ''), nxt ? 'Siguiente nivel' : 'Repetir nivel');
+        ui.show('shopBtn'); ui.show('lvlOver');
+      } else { ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar'); ui.hide('shopBtn'); ui.show('lvlOver'); }
     }
     S.zoom = input.zoom && S.state === 'play';
     S.crouch = input.crouch && S.state === 'play';

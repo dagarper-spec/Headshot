@@ -22,7 +22,8 @@
   <div id="sc"><b id="score">0</b><small id="combo"></small></div>
   <div id="ammo"><b id="mag">30</b><small id="rl"></small></div>
   <div id="xh"><i></i><i></i><i></i><i></i></div><div id="hm"></div><div id="vig"></div>
-  <div id="ban"></div><div id="toast"></div>
+  <div id="ban"></div><div id="chestbar"><i></i></div>
+<div id="toast"></div>
   <div id="bPause">II</div>
 </div>
 
@@ -41,6 +42,7 @@
   <button id="start" class="big" disabled>Cargando…</button>
   <button id="cont" class="big alt hide"></button>
   <button id="restart" class="big alt hide">Reiniciar nivel</button>
+  <button id="lvlBtn" class="big alt">Niveles</button>
   <button id="menuShop" class="big alt hide">Tienda</button>
   <label class="q">Calidad
     <select id="quality">
@@ -62,11 +64,19 @@
   <button id="shopBack" class="big">Volver</button>
 </div>
 
+<div id="levels" class="ov hide shopish">
+  <h1>NIVELES</h1>
+  <div id="lvlInfo" class="sub"></div>
+  <div id="lvlList"></div>
+  <button id="lvlBack" class="big">Volver</button>
+</div>
+
 <div id="over" class="ov hide">
   <h1 id="ot">HAS CAÍDO</h1>
   <p id="ostats" class="sub"></p>
   <button id="again" class="big">Jugar de nuevo</button>
   <button id="shopBtn" class="big alt hide">Tienda</button>
+  <button id="lvlOver" class="big alt hide">Niveles</button>
 </div>
 
 <script>

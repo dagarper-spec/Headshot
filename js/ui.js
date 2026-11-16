@@ -13,6 +13,9 @@ export const ui = {
     txt('wv', 'NIVEL ' + (S.level + 1) + ' \u00B7 ' + name);
     txt('score', mmss(S.t));
     txt('mag', S.reloading ? '--' : S.mag);
+    const cb = $('chestbar'), ch = S.chest, on = ch && !ch.open && ch.prog > 0.02;
+    if (cb.style.display !== (on ? 'block' : 'none')) cb.style.display = on ? 'block' : 'none';
+    if (on) cb.firstElementChild.style.width = Math.min(100, (ch.prog / 1.5) * 100) + '%';
     txt('rl', S.reloading ? 'RECARGANDO' : '/ ' + st.mag);
   },
   show(id) { $(id).classList.remove('hide'); },

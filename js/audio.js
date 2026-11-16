@@ -70,6 +70,13 @@ export const sfx = {
     else if (kind === 'wood') { tone(320, 140, 0.07, 'triangle', 0.25); noise(0.08, 0.35, 1800, 300, 'lowpass'); }
     else { noise(0.07, 0.35, 3500, 600, 'bandpass'); tone(180, 90, 0.05, 'sine', 0.15); }
   },
+  // Explosión (graves + ruido + eco), pitido de granada, cofre, blindaje del jefe y cambio de fase
+  boom() { noise(0.7, 1, 2500, 60, 'lowpass', 0.7); tone(90, 28, 0.6, 'sine', 1, 0.4); noise(0.1, 0.8, 8000, 1500, 'highpass', 0.3); },
+  beep() { tone(1500, 1500, 0.05, 'square', 0.12); },
+  pin() { noise(0.04, 0.3, 6000, 3000, 'highpass'); tone(2400, 1800, 0.05, 'triangle', 0.15, 0, 0.05); },
+  chest() { tone(660, 990, 0.12, 'triangle', 0.25); tone(990, 1320, 0.18, 'triangle', 0.25, 0, 0.1); noise(0.12, 0.25, 3000, 800, 'bandpass'); },
+  armor() { ring([900, 1500], 0.25, 0.2); noise(0.04, 0.4, 5000, 1500, 'highpass'); },
+  phase() { tone(160, 60, 0.7, 'sawtooth', 0.5, 0.4); tone(120, 50, 0.9, 'square', 0.3, 0.4, 0.1); },
   wave() { tone(90, 70, 0.8, 'sawtooth', 0.35); tone(135, 105, 0.8, 'sawtooth', 0.2); },
   up() { tone(500, 900, 0.15, 'triangle', 0.25); setTimeout(() => tone(750, 1200, 0.2, 'triangle', 0.25), 110); },
 };

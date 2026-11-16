@@ -105,3 +105,14 @@ body.touch #ammo{right:max(20px,env(safe-area-inset-right));bottom:calc(max(18px
 .item.own{border-color:#6fdc8c88;cursor:default}.item.own em{color:#6fdc8c}
 .item.no{opacity:.45}
 .item i{display:block;width:26px;height:26px;border-radius:50%;margin:0 auto;border:2px solid #fff6}
+
+#levels{overflow-y:auto;justify-content:flex-start;padding-top:max(20px,env(safe-area-inset-top));touch-action:pan-y}
+#levels h1{font-size:clamp(34px,8vw,64px)}
+#lvlList{display:flex;flex-direction:column;gap:10px;width:min(92vw,420px)}
+.item.lvl{width:100%}.item.lvl em{letter-spacing:4px;font-size:22px}
+#chestbar{position:fixed;left:50%;bottom:34%;width:140px;height:10px;margin-left:-70px;background:#0008;border:1px solid #ffd75e88;border-radius:5px;display:none;z-index:5}
+#chestbar i{display:block;height:100%;width:0;background:#ffd75e;border-radius:4px}
+.stars{font-size:38px;color:#ffd75e;letter-spacing:6px}
+/* Pantallas largas (resultados, menú) en móvil horizontal: desplazables y más compactas */
+.ov{overflow-y:auto;justify-content:safe center;touch-action:pan-y;padding:12px 0}
+@media (max-height:480px){.ov{gap:8px}.ov h1{font-size:clamp(30px,9vh,56px)}.big{font-size:18px;padding:9px 30px}.stars{font-size:28px}.sub{font-size:15px}}
