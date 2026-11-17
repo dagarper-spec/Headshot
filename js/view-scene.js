@@ -150,7 +150,7 @@ export function createView(canvas, tier, model, fpsData, props) {
     g.visible = false; scene.add(g); slots.push(s);
   }
 
-  const items = createItems(scene, 4, 6);
+  const items = createItems(scene, 4, 6, camera);
 
   // ---------- Calidad adaptable ----------
   let vh = innerHeight; // altura real de render en píxeles (la usan las partículas)
@@ -183,6 +183,7 @@ export function createView(canvas, tier, model, fpsData, props) {
   const eu = new THREE.Euler();
   let zk = 0, wasRl = false; // zk: 0 = cadera, 1 = apuntando con zoom
   const view = {
+    warn: [], // enemigos que te apuntan: {a: ángulo en pantalla, k: carga 0..1} (lo lee la interfaz)
     scene, camera,
     // rp: progreso de recarga 0..1 (o -1); fx aporta retroceso y temblor.
     sync(S, time, dt, fx, rp) {
@@ -209,12 +210,13 @@ export function createView(canvas, tier, model, fpsData, props) {
       lamps[1].intensity = 380 * (Math.random() < 0.03 ? 0.3 : 1); // lámpara que parpadea
       panels[1].color.setScalar(lamps[1].intensity < 380 ? 0.8 : 4);
       const k = Math.min(1, dt * 9);
+      view.warn.length = 0;
       slots.forEach((s, i) => {
         const e = S.enemies[i];
         s.g.visible = e.active;
         if (!e.active) { s.laser.visible = s.dot.visible = s.bars.visible = false; return; }
         if (s.mx && s.tint !== e.tint) { s.tint = e.tint; s.mx.fab.forEach((m) => m.color.setHex(e.tint || 0xc4c4b4)); }
-        { const ar = (e.helmet ? 1 : 0) + (e.shield ? 1 : 0), arMax = e.boss || e.role === 'shield' || e.role === 'grenadier' || e.helmet || e.shield ? 1 : 0;
+        { const ar = (e.helmet ? 1 : 0) + (e.shield ? 1 : 0) + (e.vest ? 1 : 0), arMax = Math.max(e.arMax || 0, ar);
           s.bars.visible = e.alive; s.bars.position.set(e.x, 2.12 - 0.45 * s.cr, e.z); s.bars.quaternion.copy(camera.quaternion);
           s.bHp.f.scale.x = Math.max(0.001, 0.54 * Math.max(0, e.hp) / 2);
           s.bAr.bg.visible = s.bAr.f.visible = arMax > 0 || e.boss; s.bAr.f.scale.x = Math.max(0.001, 0.54 * ar / Math.max(1, arMax)); }
@@ -235,13 +237,13 @@ export function createView(canvas, tier, model, fpsData, props) {
         } else if (s.mixer) s.mixer.update(dt * s.mv);
         // láser rojo: avisa de que te está apuntando (más intenso cuanto más cerca del disparo)
         const L = s.laser, show = e.alive && e.aiming && e.sees;
-        L.visible = s.dot.visible = show;
+        L.visible = false; s.dot.visible = show;
         if (show) {
           const gp = view.gunPos(i) || [e.x + Math.sin(e.face) * 0.6, 1.5, e.z + Math.cos(e.face) * 0.6];
           const dx = p.x - gp[0], dy = S.eye - gp[1], dz = p.z - gp[2], d = Math.hypot(dx, dy, dz);
-          L.position.set(gp[0] + dx / 2, gp[1] + dy / 2, gp[2] + dz / 2); L.scale.z = d; L.lookAt(p.x, S.eye, p.z);
-          L.material.opacity = 0.25 + 0.75 * e.aimK;
-          s.dot.position.set(gp[0], gp[1], gp[2]); s.dot.scale.setScalar(0.5 + 1.8 * e.aimK);
+          s.dot.position.set(gp[0], gp[1], gp[2]); s.dot.scale.setScalar(0.4 + 1.6 * e.aimK); // brillo que crece en la boca del arma
+          const v = new THREE.Vector3(e.x, 1.4, e.z).applyMatrix4(camera.matrixWorldInverse); // ángulo respecto a donde miras (0 = delante)
+          view.warn.push({ a: Math.atan2(v.x, -v.z), k: e.aimK });
         }
       });
     },

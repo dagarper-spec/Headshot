@@ -172,7 +172,11 @@ export function createFx(scene, camera, view) {
   // Limpia los decales al empezar un nivel.
   // Explosión de granada/mina: bola de fuego, chispas, humo y sacudida según la distancia a la cámara.
   const bl = new THREE.PointLight(0xff9040, 0, 14, 2); scene.add(bl); let blT = 0;
+  const flashM = new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 3.5, 1.2), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const wave = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.6, 1), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), flashM); wave.visible = ball.visible = false; scene.add(wave, ball); let wvT = 9;
   fx.boom = (x, y, z) => {
+    wvT = 0; wave.position.set(x, 0.08, z); ball.position.set(x, y + 0.5, z); wave.visible = ball.visible = true;
     for (let i = 0; i < cnt(40); i++) { const a = Math.random() * 6.283, v = 2 + Math.random() * 7; em(spark, x, y, z, Math.cos(a) * v, 1 + Math.random() * 6, Math.sin(a) * v, 0.09, 0.02, 0.5 + Math.random() * 0.4, 5, 2.2, 0.6, 1, 14, 1); }
     for (let i = 0; i < cnt(26); i++) { const a = Math.random() * 6.283, v = Math.random() * 3.5; em(dust, x, y + 0.2, z, Math.cos(a) * v, 0.6 + Math.random() * 2.5, Math.sin(a) * v, 0.35, 1.5, 1.4 + Math.random(), 0.18, 0.16, 0.15, 0.7, -0.4, 1.4); }
     for (let i = 0; i < cnt(10); i++) em(spark, x + rnd(0.5), y + 0.2, z + rnd(0.5), rnd(2), 0.5 + Math.random(), rnd(2), 0.9, 0.3, 0.25, 6, 3, 0.9, 1, 0, 3);
@@ -183,6 +187,7 @@ export function createFx(scene, camera, view) {
   fx.setQuality = (q) => { fx.q = q; };
 
   fx.update = (dt) => {
+    if (wvT < 0.6) { wvT += dt; const k = wvT / 0.6; wave.scale.setScalar(0.5 + 5.5 * (1 - Math.pow(1 - k, 3))); wave.material.opacity = 0.8 * (1 - k); ball.scale.setScalar(0.4 + 1.6 * Math.min(1, k * 3)); flashM.opacity = Math.max(0, 1 - k * 2.5); if (k >= 1) wave.visible = ball.visible = false; }
     U.scale.value = (view.viewH || innerHeight) / (2 * Math.tan((camera.fov * Math.PI) / 360));
     for (const s of [spark, dust]) {
       const { pos, vel, life, max, col, size, base, s0, s1, grav, drag, type } = s;

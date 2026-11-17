@@ -41,7 +41,7 @@ async function boot() {
   }
   const fx = createFx(view.scene, view.camera, view);
   window.headshot.fx = fx; window.headshot.view = view; // depuración
-  let slowT = 0, endTimer = 0; // cámara lenta al terminar el nivel
+  let wT = 0, slowT = 0, endTimer = 0; // cámara lenta al terminar el nivel
 
   // ----- Eventos de la lógica -> efectos, sonido y UI -----
   const fq = { low: 0.5, medium: 0.75, high: 1 };
@@ -70,7 +70,7 @@ async function boot() {
     if (!d.hit) imp(d.end, d.surf);
   });
   on('shield', () => { sfx.helmet(); });
-  on('armor', (d) => { sfx.armor(); fx.impact(d.pt, [0, 1, 0], 'metal'); });
+  on('armor', (d) => { sfx.armor(); fx.impact(d.pt, [0, 1, 0], 'metal'); if (d.vest) ui.toast('¡Placa antibalas! Otro tiro al cuerpo'); });
   on('vestHit', () => { sfx.armor(); ui.toast('El chaleco ha absorbido el impacto'); });
   on('throw', (d) => { sfx.pin(); ui.toast('¡Granada!'); [0.5, 0.8, 1.0, 1.15, 1.3, 1.4].forEach((t) => setTimeout(sfx.beep, (d.T + t) * 1000 - 0)); });
   on('boom', (d) => { fx.boom(d.x, d.y, d.z); sfx.boom(); });
@@ -200,6 +200,8 @@ async function boot() {
     } else core.update(dt, input);
     input.dx = input.dy = 0; input.reload = false;
     fx.update(dt); music.update(raw);
+    { const km = ui.warn(S.state === 'play' ? view.warn : []); // aviso de apuntado: pitido que se acelera al cargar el tiro
+      if (km > 0) { wT -= raw; if (wT <= 0) { sfx.warn(km); wT = 0.5 - 0.38 * km; } } else wT = 0; }
     // retícula reactiva: se abre al moverte, al estar herido y con el retroceso; se cierra al agacharte; con zoom solo queda el punto
     gap += (5 + spread() * 650 + fx.kick * 8 - gap) * Math.min(1, raw * 14);
     xh.style.setProperty('--g', gap.toFixed(1) + 'px'); xh.classList.toggle('zoom', S.zoom);

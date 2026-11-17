@@ -19,6 +19,18 @@ export const ui = {
     if (on) cb.firstElementChild.style.width = Math.min(100, (ch.prog / 1.5) * 100) + '%';
     txt('rl', S.reloading ? 'RECARGANDO' : '/ ' + st.mag);
   },
+  // Indicador de amenaza: flechas rojas alrededor de la mira que apuntan hacia quien te apunta y se intensifican al cargar el disparo.
+  warn(list) {
+    const els = $('warn').children; let kmax = 0;
+    for (let i = 0; i < els.length; i++) {
+      const w = list[i], el = els[i];
+      if (!w) { if (el.style.opacity !== '0') el.style.opacity = '0'; continue; }
+      kmax = Math.max(kmax, w.k);
+      el.style.opacity = (0.35 + 0.65 * w.k).toFixed(2); el.style.transform = `rotate(${w.a}rad) translateY(calc(var(--wr) * -1)) scale(${(0.8 + 0.7 * w.k).toFixed(2)})`;
+    }
+    $('warn').style.setProperty('--w', kmax.toFixed(2));
+    return kmax;
+  },
   show(id) { $(id).classList.remove('hide'); },
   hide(id) { $(id).classList.add('hide'); },
   flashClass(id, cls, ms) {

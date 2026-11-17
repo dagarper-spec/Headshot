@@ -60,6 +60,8 @@ export function createMixamoSoldier(model) {
   for (const x of [-0.1, 0, 0.1]) add(vest, rb(0.08, 0.1, 0.05, 0.02), pouch, x, -0.04, 0.145);
   add(vest, rb(0.14, 0.17, 0.05, 0.02), pouch, 0, 0.06, -0.14);
   mount(bone('Spine2'), vest, at('Spine2').add(new THREE.Vector3(0, 0.0, 0.01)));
+  const plate = new THREE.Group(); add(plate, rb(0.3, 0.28, 0.035, 0.015), mat(0x3a4048, 0.45, 0.8), 0, 0.02, 0.165); add(plate, rb(0.22, 0.04, 0.04, 0.01), mat(0x8a8f94, 0.5, 0.7), 0, 0.12, 0.17);
+  mount(bone('Spine2'), plate, at('Spine2').add(new THREE.Vector3(0, 0.0, 0.01)));
   const belt = new THREE.Group();
   add(belt, rb(0.35, 0.05, 0.24, 0.015), strap, 0, 0, 0);
   add(belt, rb(0.06, 0.14, 0.055, 0.015), pouch, 0.2, -0.08, 0.02);
@@ -92,7 +94,7 @@ export function createMixamoSoldier(model) {
       }
       act.walk.timeScale = (e.sp || WALK_V) / WALK_V;   // los pies siguen la velocidad real
       act.run.timeScale = (e.sp || RUN_V) / RUN_V;
-      helmet.visible = e.helmet;
+      helmet.visible = e.helmet; plate.visible = !!e.vest;
       mixer.update(dt);
       root.updateMatrixWorld(true);
     },

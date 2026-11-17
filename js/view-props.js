@@ -145,9 +145,25 @@ export function buildDecor(scene, half, HT) {
     const s = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), new THREE.MeshStandardMaterial({ map: dan, roughness: 0.6 })); s.position.set(x, y, z); s.rotation.y = r; scene.add(s);
   }
 
-  // Cuadro eléctrico con pilotos luminosos
+  // Cuadro eléctrico viejo: chapa oxidada y sucia, puerta con bisagras, etiqueta desgastada, pilotos apagados o mortecinos y cables colgando
   const panel = new THREE.Group();
-  const pb = mesh(box(0.14, 1.1, 0.75), new THREE.MeshStandardMaterial({ color: 0x6d7378, roughness: 0.5, metalness: 0.6 })); panel.add(pb);
-  [[0.4, 0xff2a1a], [0.25, 0xff2a1a], [0.1, 0x20ff50]].forEach(([dz, c], i) => { const l = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(4) })); l.position.set(-0.08, 0.4 - i * 0.12, -0.25 + (i % 2) * 0.2); panel.add(l); });
+  const rustTex = textTex(192, 280, (x, w, h) => {
+    x.fillStyle = '#4b4d47'; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1400; i++) { x.fillStyle = `rgba(${Math.random() < 0.5 ? '30,28,24' : '120,110,95'},${0.05 + Math.random() * 0.1})`; x.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 4, 1 + Math.random() * 3); }
+    for (let i = 0; i < 26; i++) { const px = Math.random() * w, g = x.createLinearGradient(0, 0, 0, h); x.fillStyle = `rgba(${130 + Math.random() * 40},${60 + Math.random() * 30},20,${0.08 + Math.random() * 0.14})`; x.fillRect(px, Math.random() * h * 0.5, 2 + Math.random() * 6, 40 + Math.random() * 160); }
+    x.strokeStyle = '#2a2b28'; x.lineWidth = 3; x.strokeRect(10, 10, w - 20, h - 20); x.beginPath(); x.moveTo(w / 2, 10); x.lineTo(w / 2, h - 10); x.stroke();
+    x.fillStyle = '#c9a824'; x.fillRect(22, 28, 60, 34); x.fillStyle = '#222'; x.font = 'bold 26px Arial'; x.fillText('⚡', 36, 55); x.fillStyle = 'rgba(40,36,30,.55)'; x.fillRect(22, 28, 60, 34);
+    x.fillStyle = 'rgba(210,200,170,.5)'; x.font = '12px monospace'; x.fillText('220V · NO ABRIR', 22, 82);
+    for (let i = 0; i < 18; i++) { x.strokeStyle = `rgba(190,180,160,${0.1 + Math.random() * 0.15})`; x.lineWidth = 1; x.beginPath(); const a = Math.random() * w, b = Math.random() * h; x.moveTo(a, b); x.lineTo(a + 20 + Math.random() * 40, b + (Math.random() - 0.5) * 14); x.stroke(); }
+  });
+  const dull = new THREE.MeshStandardMaterial({ color: 0x35362f, roughness: 0.95, metalness: 0.5 });
+  const face = new THREE.MeshStandardMaterial({ map: rustTex, bumpMap: rustTex, bumpScale: 1.2, roughness: 0.9, metalness: 0.4 });
+  const pb = mesh(box(0.14, 1.1, 0.75), [dull, face, dull, dull, dull, dull]); panel.add(pb);
+  // pilotos (z = posición horizontal en el cuadro): uno rojo mortecino, uno muerto, uno verde débil con cristal sucio
+  [[0.28, 0.05, new THREE.Color(1.4, 0.12, 0.08)], [0.28 - 0.17, 0.05, new THREE.Color(0.12, 0.05, 0.04)], [0.28 - 0.34, 0.05, new THREE.Color(0.1, 0.9, 0.25)]].forEach(([dz, , c]) => {
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), new THREE.MeshBasicMaterial({ color: c })); l.position.set(-0.075, 0.18, dz - 0.05); panel.add(l);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 6, 12), dull); rim.position.copy(l.position); rim.rotation.y = Math.PI / 2; panel.add(rim);
+  });
+  for (const dz of [-0.2, 0.05, 0.25]) { const cb = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.5 + Math.random() * 0.3, 6), new THREE.MeshStandardMaterial({ color: 0x16171a, roughness: 0.8 })); cb.position.set(-0.04, -0.75, dz); cb.rotation.z = (Math.random() - 0.5) * 0.15; panel.add(cb); }
   panel.position.set(H - 0.08, 1.5, 6.5); scene.add(panel);
 }
