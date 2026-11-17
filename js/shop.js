@@ -1,6 +1,7 @@
 // Economía y tienda: recompensa por tiempo y mejoras permanentes (guardadas en localStorage).
 import { CFG, LEVELS } from './config.js';
-import { setGlove } from './view-fps.js';
+import { setGlove, setSkin } from './view-fps.js';
+import { COS } from './cosmetics.js';
 
 const BASE = { mag: CFG.weapon.mag, reload: CFG.weapon.reload, hp: CFG.player.hp };
 
@@ -15,6 +16,13 @@ export const ITEMS = [
   { id: 'gRed',   kind: 'glove', name: 'Guantes rojos',   desc: ['Cosmético'], price: 250, color: 0x8e1b1b },
   { id: 'gCamo',  kind: 'glove', name: 'Guantes camuflaje', desc: ['Cosmético'], price: 400, color: 0x4b5a35 },
   { id: 'gGold',  kind: 'glove', name: 'Guantes dorados', desc: ['Cosmético'], price: 700, color: 0xb8902a },
+  // Pistola: acabados (mat = color, metal, rugosidad) y color del fogonazo (rgb HDR + luz)
+  { id: 'sMatte',  kind: 'skin', name: 'Negra mate',      desc: ['Acabado sin brillo'], price: 300, color: 0x15171a, metal: 0.25, rough: 0.85 },
+  { id: 'sBronze', kind: 'skin', name: 'Bronce envejecido', desc: ['Metal viejo y gastado'], price: 450, color: 0x9a7440, metal: 0.85, rough: 0.5 },
+  { id: 'sChrome', kind: 'skin', name: 'Cromada',         desc: ['Brillo de espejo'], price: 650, color: 0xe6ebf0, metal: 1, rough: 0.1 },
+  { id: 'fBlue',   kind: 'flash', name: 'Fogonazo azul',  desc: ['Cosmético'], price: 300, color: 0x6aa8ff, rgb: [1.8, 2.8, 4.5] },
+  { id: 'fGreen',  kind: 'flash', name: 'Fogonazo verde', desc: ['Cosmético'], price: 300, color: 0x7dff9a, rgb: [1.5, 4.2, 1.8] },
+  { id: 'fRed',    kind: 'flash', name: 'Fogonazo rojo',  desc: ['Cosmético'], price: 300, color: 0xff4a3a, rgb: [4.5, 1.2, 0.9] },
 ];
 
 // Recompensa: completa si terminas dentro del tiempo par; baja en línea recta hasta 0 a 4x el par.
@@ -31,6 +39,8 @@ export function applyUpgrades(d) {
   CFG.weapon.stab = 1 - [0, 0.2, 0.35][lv('stab')];
   CFG.player.hp = BASE.hp + (lv('vest') ? 1 : 0);
   const g = ITEMS.find((i) => i.id === d.glove); setGlove(g ? g.color : 0);
+  const sk = ITEMS.find((i) => i.id === d.skin); setSkin(sk || null);
+  const fl = ITEMS.find((i) => i.id === d.flash); COS.flash = fl ? fl.rgb : [4, 2.8, 1.2]; COS.light = fl ? fl.color : 0xffa860;
 }
 
 // Iconos vectoriales (viewBox 64) de cada objeto; "c" = color del guante.
@@ -43,8 +53,10 @@ const ICON = {
   cVest: () => '<path d="M18 8l8 4h12l8-4 10 10-6 8v28H14V26l-6-8z" fill="#46516a" stroke="#8fb4ff" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="5 3"/><text x="32" y="44" text-anchor="middle" font-size="22" font-family="Impact,sans-serif" fill="#cfe0ff">x1</text>',
   glove: (c) => `<path d="M20 58V36l-8-10c-2-3 2-7 5-4l5 5V12c0-3 5-3 5 0v14V9c0-3 5-3 5 0v17V11c0-3 5-3 5 0v18V16c0-3 5-3 5 0v26c0 8-4 16-10 16z" fill="${c}" stroke="#0007" stroke-width="2" stroke-linejoin="round"/><path d="M20 50h22" stroke="#0006" stroke-width="3"/>`,
 };
+ICON.skin = (c) => `<path d="M6 24h38l4-6h10v10h-8l-3 4H34l-2 14H20l2-14H6z" fill="${c}" stroke="#0009" stroke-width="2.5" stroke-linejoin="round"/><path d="M12 28h28" stroke="#fff6" stroke-width="2"/>`;
+ICON.flash = (c) => `<g fill="${c}"><path d="M32 6l5 17 17-5-12 13 14 10-18 1 3 18-9-15-11 14 2-18-17-3 14-10-10-14 16 6z"/></g><circle cx="32" cy="32" r="6" fill="#fff"/>`;
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
-const TABS = [['up', 'Mejoras'], ['cons', 'Consumibles'], ['glove', 'Guantes']];
+const TABS = [['up', 'Mejoras'], ['cons', 'Consumibles'], ['glove', 'Guantes'], ['gun', 'Pistola']];
 let tab = 'up';
 
 // Pinta la tienda como cuadrícula de tarjetas con imagen. save() guarda los cambios.
@@ -55,7 +67,7 @@ export function renderShop(d, save) {
   for (const [k, n] of TABS) { const b = document.createElement('button'); b.className = 'tab' + (k === tab ? ' on' : ''); b.textContent = n; b.onclick = () => { tab = k; renderShop(d, save); }; tabs.appendChild(b); }
   const box = document.getElementById('items'); box.innerHTML = '';
   const bossDone = !!(d.stars && d.stars[3]);
-  for (const it of ITEMS.filter((i) => i.kind === tab)) {
+  for (const it of ITEMS.filter((i) => (tab === 'gun' ? i.kind === 'skin' || i.kind === 'flash' : i.kind === tab))) {
     const el = document.createElement('button'); let title = it.name, desc, st, canBuy = false, buy = null, pips = '', cls = 'item';
     if (it.kind === 'up') {
       const lv = +d.items[it.id] || 0, max = it.prices.length, price = it.prices[lv];
@@ -66,11 +78,11 @@ export function renderShop(d, save) {
       const n = d.cons[it.id] || 0; desc = it.desc[0]; pips = n ? `<div class="have">Tienes ${n}</div>` : '';
       st = n >= 3 ? 'Máximo' : '$ ' + it.price; canBuy = d.coins >= it.price && n < 3; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.cons[it.id] = n + 1; };
     } else {
-      const own = !!d.items[it.id], eq = d.glove === it.id; desc = it.desc[0];
-      if (own) { st = eq ? 'Equipado' : 'Equipar'; cls += eq ? ' own eq' : ' own'; canBuy = true; buy = () => { d.glove = eq ? '' : it.id; }; }
-      else { st = '$ ' + it.price; canBuy = d.coins >= it.price; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.items[it.id] = 1; d.glove = it.id; }; }
+      const slot = it.kind === 'glove' ? 'glove' : it.kind, own = !!d.items[it.id], eq = d[slot] === it.id; desc = it.desc[0];
+      if (own) { st = eq ? 'Equipado' : 'Equipar'; cls += eq ? ' own eq' : ' own'; canBuy = true; buy = () => { d[slot] = eq ? '' : it.id; }; }
+      else { st = '$ ' + it.price; canBuy = d.coins >= it.price; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.items[it.id] = 1; d[slot] = it.id; }; }
     }
-    const ic = it.kind === 'glove' ? ICON.glove(hex(it.color)) : ICON[it.id]();
+    const ic = it.kind === 'glove' ? ICON.glove(hex(it.color)) : it.kind === 'skin' ? ICON.skin(hex(it.color)) : it.kind === 'flash' ? ICON.flash(hex(it.color)) : ICON[it.id]();
     el.className = cls;
     el.innerHTML = `<div class="pic"><svg viewBox="0 0 64 64">${ic}</svg></div><b>${title}</b><span>${desc}</span>${pips}<em>${st}</em>`;
     el.onclick = () => { if (!canBuy || !buy) return; buy(); save(); applyUpgrades(d); renderShop(d, save); };

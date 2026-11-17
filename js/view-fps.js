@@ -82,18 +82,19 @@ function buildLeftHand() {
 
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
+const GUN = [];
 export function createFps(gltf) {
   const vm = new THREE.Group(), rig = new THREE.Group(), outer = new THREE.Group(); // outer: el juego mueve/inclina este grupo
   vm.add(rig); vm.rotation.y = Math.PI; outer.add(vm);
-  const root = gltf.scene; rig.add(root);
+  const root = gltf.scene; rig.add(root); GUN.length = 0;
   const talon = root.getObjectByName('Talon');
-  talon.add(buildRightHand()); // la mano derecha sigue a la pistola
+  const rh = buildRightHand(); rh.userData.hand = true; talon.add(rh); // la mano derecha sigue a la pistola
   // Puntos de referencia: boca del cañón y ventana de expulsión (para fogonazo y casquillos)
   const muzzle = new THREE.Object3D(); muzzle.position.set(0, 6.0, 26.5); talon.add(muzzle);
   const ejector = new THREE.Object3D(); ejector.position.set(-2.4, 8.4, 3.0); talon.add(ejector);
 
   // Mano izquierda (solo visible al recargar)
-  const left = buildLeftHand(); left.visible = false; rig.add(left);
+  const left = buildLeftHand(); left.userData.hand = true; left.visible = false; rig.add(left);
   const clipNode = root.getObjectByName('clip');
   let clipMesh = null, clipLP = null; const LREST = new THREE.Vector3(16, -36, -26), tmpV = new THREE.Vector3(), tgt = new THREE.Vector3();
   if (clipNode) {
@@ -105,6 +106,8 @@ export function createFps(gltf) {
     }
   }
   rig.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+  // Mallas de la pistola (sin manos) para poder cambiar su acabado
+  root.traverse((o) => { if (!o.isMesh) return; let a = o, hand = false; while (a) { if (a.userData.hand) hand = true; a = a.parent; } if (!hand) { o.userData.orig = o.material; GUN.push(o); } });
 
   const mixer = new THREE.AnimationMixer(root), act = {};
   for (const c of gltf.animations) { const a = mixer.clipAction(c); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = false; act[c.name] = a; }
@@ -132,3 +135,13 @@ export function createFps(gltf) {
 
 // Cosmético: cambia el color de los guantes (hex) o restaura el original ('' / 0).
 export function setGlove(hex) { const m = mats(); m.glove.color.set(hex || 0x1b1c1f); }
+
+// Cosmético: acabado de la pistola (null = original). skin = { color, metal, rough }.
+export function setSkin(skin) {
+  for (const o of GUN) {
+    const orig = o.userData.orig; if (!orig) continue;
+    if (!skin) { o.material = orig; continue; }
+    o.material = [].concat(orig).map((m) => { const c = m.clone(); c.map = null; c.bumpMap = null; c.color.set(skin.color); c.metalness = skin.metal; c.roughness = skin.rough; c.envMapIntensity = skin.metal > 0.7 ? 1.5 : 0.6; c.needsUpdate = true; return c; });
+    if (o.material.length === 1) o.material = o.material[0];
+  }
+}

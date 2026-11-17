@@ -1,6 +1,7 @@
 // Efectos visuales con Object Pooling: partículas (chispas, humo, polvo, sangre), casquillos, trazadores,
 // agujeros de bala y manchas de sangre. Todo se reutiliza (sin crear objetos durante el juego).
 import * as THREE from 'three';
+import { COS } from './cosmetics.js';
 
 const VS = `attribute float size; attribute vec4 color; varying vec4 vC; uniform float scale;
 void main(){ vC = color; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
@@ -111,8 +112,9 @@ export function createFx(scene, camera, view) {
 
   // Fogonazo + humo en `p` apuntando a `d` (vector unitario). strong: arma del jugador.
   fx.muzzle = (p, d, strong) => {
-    em(spark, p.x, p.y, p.z, 0, 0, 0, strong ? 0.34 : 0.22, 0.05, 0.05, 4, 2.8, 1.2, 1);
-    for (let k = 0; k < cnt(strong ? 8 : 5); k++) { const s = 5 + Math.random() * 9; em(spark, p.x, p.y, p.z, d.x * s + rnd(3), d.y * s + rnd(3), d.z * s + rnd(3), 0.02, 0.005, 0.07 + Math.random() * 0.08, 3, 1.8, 0.6, 1, 2, 0.5); }
+    const fc = strong ? COS.flash : [4, 2.8, 1.2], f2 = fc.map((v) => v * 0.75); if (strong) flash.color.setHex(COS.light);
+    em(spark, p.x, p.y, p.z, 0, 0, 0, strong ? 0.34 : 0.22, 0.05, 0.05, fc[0], fc[1], fc[2], 1);
+    for (let k = 0; k < cnt(strong ? 8 : 5); k++) { const s = 5 + Math.random() * 9; em(spark, p.x, p.y, p.z, d.x * s + rnd(3), d.y * s + rnd(3), d.z * s + rnd(3), 0.02, 0.005, 0.07 + Math.random() * 0.08, f2[0], f2[1], f2[2], 1, 2, 0.5); }
     for (let k = 0; k < cnt(strong ? 4 : 3); k++) em(dust, p.x, p.y, p.z, d.x * 0.8 + rnd(0.5), 0.35 + Math.random() * 0.3, d.z * 0.8 + rnd(0.5), 0.08, 0.45, 0.8 + Math.random() * 0.5, 0.6, 0.6, 0.6, 0.22, 0, 1.6);
   };
 

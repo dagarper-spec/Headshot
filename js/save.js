@@ -1,6 +1,6 @@
 // Guardado local (récord y ajustes). Tolerante a fallos si localStorage no está disponible.
 const K = 'headshot_v1';
-const DEF = { level: 0, quality: 'auto', music: true, blood: 'normal', coins: 0, items: {}, glove: '', stars: {} };
+const DEF = { level: 0, quality: 'auto', music: true, blood: 'normal', coins: 0, items: {}, glove: '', skin: '', flash: '', stars: {} };
 
 export const freshSave = () => ({ ...DEF, items: {}, stars: {}, cons: {} });
 export function loadSave() {
