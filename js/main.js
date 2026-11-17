@@ -71,7 +71,8 @@ async function boot() {
     if (!d.hit) imp(d.end, d.surf);
   });
   on('shield', () => { sfx.helmet(); });
-  on('armor', (d) => { sfx.armor(); fx.impact(d.pt, [0, 1, 0], 'metal'); if (d.vest) ui.toast('¡Placa antibalas! Otro tiro al cuerpo'); });
+  on('armor', (d) => { sfx.armor(); fx.impact(d.pt, [0, 1, 0], 'metal'); if (d.vest) ui.toast('¡Placa antibalas! Otro tiro al cuerpo'); if (d.seg) ui.toast('Invulnerable: ¡derriba sus drones!'); });
+  on('reserve', () => { ui.toast('¡Francotirador en la azotea!'); sfx.warn(0.8); });
   on('vestHit', () => { sfx.armor(); ui.toast('El chaleco ha absorbido el impacto'); });
   on('throw', (d) => { sfx.pin(); ui.toast('¡Granada!'); [0.5, 0.8, 1.0, 1.15, 1.3, 1.4].forEach((t) => setTimeout(sfx.beep, (d.T + t) * 1000 - 0)); });
   on('boom', (d) => { fx.boom(d.x, d.y, d.z); sfx.boom(); });

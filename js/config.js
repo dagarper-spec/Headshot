@@ -70,4 +70,7 @@ export const LEVELS = [
     enemies: [{ x: 10.5, z: -10.5, helmet: false, role: 'flank', tint: 0x5a5d62 }], aim: 1.15, react: 0.65, acc: 0.27, burst: 0.1, hide: [2.2, 3.6], chest: [-13, -10] },
   { zone: 1, name: 'Francotirador', par: 45, pay: 450, goal: 'nodmg', goalText: 'Sin recibir daño', snipeAim: 2.4,
     enemies: [{ x: 4, z: -12.5, role: 'sniper', tint: 0x4a5a3a }, { x: 8.5, z: -3, role: 'flank', tint: 0x9a8a62 }], aim: 1.1, react: 0.6, acc: 0.27, burst: 0.1, hide: [2.2, 3.6], chest: [-13, 11.5] },
+  { zone: 1, name: 'Jefe de Seguridad', par: 75, pay: 800, goal: 'nodmg', goalText: 'Sin perder ninguna vida', boss: true, snipeAim: 2.8,
+    drones: [{ x: -4, z: -4 }, { x: 4, z: -5 }],
+    enemies: [{ x: 0, z: -11.5, boss: true, seg: true, vest: true, role: 'flank', tint: 0x2e3238 }, { x: 4, z: -12.5, later: true, role: 'sniper', tint: 0x4a5a3a }], aim: 0.95, react: 0.5, acc: 0.3, burst: 0.2, hide: [1.6, 3], chest: [13, -13] },
 ];

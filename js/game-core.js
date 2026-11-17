@@ -24,7 +24,7 @@ for (let i = 0; i < CFG.pool; i++) {
   S.enemies.push({ id: i, active: false, alive: false, x: 0, z: 0, hp: 2, helmet: false, crouch: true, state: 'hide',
     next: 'hide', timer: 0, react: 0, aimT: 0, aimK: 0, shots: 0, aiming: false, moving: false, sees: false, hitT: 0,
     face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: 3, sp: 0, r: 0.3, h: 1.38, deadT: 0, acc: 0.4,
-    tint: 0, vest: false, arMax: 0, role: 'rifle', boss: false, shield: false, shieldUp: false, ph: 1, p2: 0, gcd: 3, mineT: 3, lastCover: null });
+    tint: 0, seg: false, pend: false, vest: false, arMax: 0, role: 'rifle', boss: false, shield: false, shieldUp: false, ph: 1, p2: 0, gcd: 3, mineT: 3, lastCover: null });
 }
 
 // Puntos de cobertura precalculados: a lo largo del perímetro de cada contenedor/pilar (a 0,7 m de distancia).
@@ -125,8 +125,9 @@ export function startLevel(i) {
     Object.assign(e, { active: true, alive: true, x: d.x, z: d.z, hp: 2, helmet: !!d.helmet, crouch: true, state: 'hide',
       next: 'hide', timer: 1.5 + k * 0.7, react: lv.react, aimT: 0, aimK: 0, shots: 0, aiming: false, moving: false,
       sees: false, hitT: 0, face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: CFG.enemy.speed, deadT: 0, acc: lv.acc,
-      tint: d.tint || 0, vest: !!d.vest, arMax: (d.helmet ? 1 : 0) + (d.vest ? 1 : 0) + (d.shield ? 1 : 0) || (d.boss ? 1 : 0), role: d.role || 'rifle', boss: !!d.boss, shield: !!d.shield, shieldUp: !!d.shield, ph: 1, p2: 0, gcd: 3, mineT: 4, lastCover: null });
+      tint: d.tint || 0, seg: !!d.seg, vest: !!d.vest, arMax: (d.helmet ? 1 : 0) + (d.vest ? 1 : 0) + (d.shield ? 1 : 0) || (d.boss ? 1 : 0), role: d.role || 'rifle', boss: !!d.boss, shield: !!d.shield, shieldUp: !!d.shield, ph: 1, p2: 0, gcd: 3, mineT: 4, lastCover: null });
     if (e.role === 'shield') e.spd = CFG.enemy.speed * 0.6;
+    e.pend = false; if (d.later) { e.active = false; e.alive = false; e.pend = true; e.later = d; } // refuerzo que entra en una fase posterior
     retreat(e);
   });
   emit('level', S.level);
@@ -373,9 +374,21 @@ function hurtPlayer(head, dmg = 1) {
 }
 
 // El jugador impacta a un enemigo: cabeza = muerte (el casco absorbe el primer tiro); cuerpo = -1 vida.
+// Jefe de Seguridad: en la fase 1 es invulnerable mientras queden drones; al caer el último pasa a la fase 2 (escudo + granadas).
+export function segAdvance() {
+  const e = S.enemies.find((o) => o.seg && o.alive && o.ph === 1); if (!e) return;
+  e.ph = 2; e.vest = false; e.shield = e.shieldUp = true; e.gcd = 1.5; emit('phase', { ph: 2 }); retreat(e);
+}
+// Entra el refuerzo (francotirador) preparado en el nivel.
+function callReserve() {
+  const r = S.enemies.find((o) => o.pend); if (!r) return; const d = r.later;
+  Object.assign(r, { active: true, alive: true, pend: false, x: d.x, z: d.z, hp: 2, role: d.role || 'rifle', tint: d.tint || 0, aimT: 0, aimK: 0, aiming: false, state: 'hide', crouch: true, timer: 1.5, react: lvl().react, acc: lvl().acc, spd: CFG.enemy.speed });
+  retreat(r); emit('reserve', { e: r });
+}
 export function damageEnemy(e, head, pt, dir) {
   e.hitT = 0.35;
   if (head) S.st.headHits++;
+  if (e.seg && e.ph === 1) { emit('armor', { e, pt, dir, seg: true }); retreat(e); return; } // protegido por sus drones
   if (e.boss && e.ph === 1) { // fase 1: chaleco blindado; solo el casco roto abre la fase 2
     if (head && e.helmet) { e.helmet = false; e.ph = 2; e.shield = e.shieldUp = true; e.gcd = 1.5; emit('helmet', { e, pt, dir }); emit('phase', { ph: 2 }); }
     else emit('armor', { e, pt, dir });
@@ -383,7 +396,7 @@ export function damageEnemy(e, head, pt, dir) {
   }
   if (e.boss && e.ph === 2) { // fase 2: dos impactos que superen el escudo lo rompen
     e.p2++; emit('hit', { e, head, pt, dir });
-    if (e.p2 >= 2) { e.ph = 3; e.shield = e.shieldUp = false; e.spd = CFG.enemy.speed * 1.25; e.mineT = 1; emit('phase', { ph: 3 }); }
+    if (e.p2 >= 2) { e.ph = 3; e.shield = e.shieldUp = false; e.spd = CFG.enemy.speed * 1.25; e.mineT = 1; emit('phase', { ph: 3 }); if (e.seg) callReserve(); }
     retreat(e); return;
   }
   if (head) {
