@@ -6,7 +6,7 @@ export const CFG = {
   eyeCrouch: 1.1,   // ... y agachado
   pool: 3,           // Object Pool de enemigos (máximo por nivel)
   player: { speed: 5, radius: 0.4, hp: 2, sens: 0.0022 }, // 2 vidas: cuerpo = -1, cabeza = muerte
-  weapon: { rate: 0.24, mag: 6, reload: 1.5, range: 60 }, // pistola semiautomática de 6 balas
+  weapon: { rate: 0.24, mag: 6, reload: 1.5, range: 60, kind: 'pistol' }, // pistola semiautomática de 6 balas
   // walk/run = velocidades (m/s) que coinciden con las animaciones Mixamo de caminar y correr
   enemy: { speed: 3.4, walk: 1.8, run: 4.6, r: 0.3, h: 1.8, hAim: 1.62, hCrouch: 1.38 },
   // Obstáculos [x, z, ancho, fondo, alto, tipo]. Alto == height -> pilar de hormigón.
@@ -57,7 +57,7 @@ export const TIERS = ['low', 'medium', 'high'];
 export const LEVELS = [
   { zone: 0, name: 'Primer duelo',   par: 20, pay: 200, goal: 'norel', goalText: 'Sin recargar',
     enemies: [{ x: -9, z: -11, helmet: false }], aim: 1.3, react: 0.8, acc: 0.25, burst: 0, hide: [2.4, 4.2], chest: [12.6, -7.5] },
-  { zone: 0, name: 'Casco de acero', par: 25, pay: 250, goal: 'head', goalText: 'Acierta un headshot',
+  { zone: 0, gold: [-13, -13], name: 'Casco de acero', par: 25, pay: 250, goal: 'head', goalText: 'Acierta un headshot',
     enemies: [{ x: 9, z: -11, helmet: true, role: 'flank', vest: true, tint: 0x6f86a8 }], aim: 1.15, react: 0.65, acc: 0.28, burst: 0.1, hide: [2.2, 3.8], chest: [-12.7, 4.2] },
   { zone: 0, name: 'Escudo y fuego', par: 35, pay: 300, goal: 'nodmg', goalText: 'Sin recibir daño',
     enemies: [{ x: -9, z: -11, role: 'shield', shield: true, tint: 0xb07a68 }, { x: 10, z: -10, role: 'grenadier', helmet: true }], aim: 1.15, react: 0.65, acc: 0.28, burst: 0.1, hide: [2.0, 3.5], chest: [12.6, 8] },

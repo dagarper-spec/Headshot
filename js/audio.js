@@ -50,6 +50,7 @@ function ring(freqs, dur, vol, delay = 0) { freqs.forEach((f, i) => tone(f * (1 
 export const sfx = {
   // Disparo del jugador: chasquido agudo + estampido grave + eco del almacén
   shot() { noise(0.05, 0.8, 9000, 2500, 'highpass', 0.6); noise(0.16, 0.9, 5000, 220, 'lowpass', 0.5); tone(170, 42, 0.16, 'sine', 0.9, 0.3); tone(90, 35, 0.22, 'triangle', 0.5); },
+  shotRev() { noise(0.06, 1, 8000, 2000, 'highpass', 0.7); noise(0.26, 1, 4200, 160, 'lowpass', 0.6); tone(130, 32, 0.26, 'sine', 1, 0.4); tone(70, 28, 0.32, 'triangle', 0.6); },
   eshot() { noise(0.14, 0.5, 2600, 260, 'lowpass', 0.8); tone(120, 48, 0.12, 'sine', 0.4, 0.5); },
   // Impactos en el enemigo: cuerpo (golpe sordo), cabeza (crujido seco + golpe), casco (metal)
   hit() { noise(0.12, 0.6, 900, 120, 'lowpass'); tone(130, 55, 0.12, 'sine', 0.55); tone(520, 260, 0.04, 'square', 0.07); },

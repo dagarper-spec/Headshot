@@ -61,7 +61,7 @@ async function boot() {
     fx.splat([pt[0] + (Math.random() - 0.5) * 0.6, 0.004, pt[2] + (Math.random() - 0.5) * 0.6], [0, 1, 0], size * 1.3); // salpicadura en el suelo
   };
   on('shot', (d) => {
-    sfx.shot(); music.duck(); view.shot(); fx.shoot(d.end);
+    CFG.weapon.kind === 'rev' ? sfx.shotRev() : sfx.shot(); music.duck(); view.shot(); fx.shoot(d.end);
     if (!d.hit) setTimeout(() => imp(d.end, d.surf), 40);
   });
   on('enemyShot', (d) => {
@@ -78,6 +78,7 @@ async function boot() {
   on('boom', (d) => { fx.boom(d.x, d.y, d.z); sfx.boom(); });
   on('mine', () => sfx.pin());
   on('phase', (d) => { sfx.phase(); ui.banner(d.ph === 2 ? 'FASE 2 · ESCUDO' : 'FASE 3 · SIN ARMADURA', 1600); });
+  on('gold', () => { data.items.plano = 1; S.hasPlan = true; writeSave(data); sfx.chest(); sfx.phase(); ui.banner('¡PLANO CONSEGUIDO!', 2200); ui.toast('Plano del revólver: ya puedes comprarlo en la tienda'); });
   on('chest', (d) => {
     sfx.chest();
     ui.toast({ heal: 'Botiquín: +1 vida', vest: 'Chaleco: absorbe 1 tiro', mag: 'Cargador +2 balas', money: 'Dinero: +$' + d.amount, radar: 'Radar: enemigos marcados' }[d.kind]);
@@ -122,6 +123,7 @@ async function boot() {
   const note = () => levelLabel(data.level % LEVELS.length);
   const begin = (lvl) => {
     try { initAudio(); } catch { /* sin audio */ }
+    S.hasPlan = !!data.items.plano;
     music.setOn(data.music); music.mode('game');
     if (!input.touch) canvas.requestPointerLock();
     ui.hide('menu'); ui.hide('over'); ui.show('hud');

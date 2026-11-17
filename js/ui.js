@@ -14,9 +14,9 @@ export const ui = {
     txt('wv', name); $('dalert').classList.toggle('on', !!S.droneSeen);
     txt('score', mmss(S.t));
     txt('mag', S.reloading ? '--' : S.mag);
-    const cb = $('chestbar'), ch = S.chest, on = ch && !ch.open && ch.prog > 0.02;
+    const cb = $('chestbar'), ch = S.gold && !S.gold.open && S.gold.prog > 0.02 ? S.gold : S.chest, on = ch && !ch.open && ch.prog > 0.02;
     if (cb.style.display !== (on ? 'block' : 'none')) cb.style.display = on ? 'block' : 'none';
-    if (on) cb.firstElementChild.style.width = Math.min(100, (ch.prog / 1.5) * 100) + '%';
+    if (on) cb.firstElementChild.style.width = Math.min(100, (ch.prog / (ch.need || 1.5)) * 100) + '%';
     txt('rl', S.reloading ? 'RECARGANDO' : '/ ' + st.mag);
   },
   // Indicador de amenaza: flechas rojas alrededor de la mira que apuntan hacia quien te apunta y se intensifican al cargar el disparo.

@@ -44,15 +44,19 @@ export function createItems(scene, nGren = 4, nMine = 6, camera) {
     const led = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), lm); led.position.y = 0.05; g.add(led);
     g.visible = false; scene.add(g); return g;
   });
-  // baúl: caja de madera con herrajes y filo dorado brillante
-  const chest = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.5), std(0x3b2a1a, 1, 0)); base.position.y = 0.2; chest.add(base);
-  const lid = new THREE.Group(); lid.position.set(0, 0.4, -0.25);
-  const lidM = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.16, 0.52), std(0x45311f, 1, 0)); lidM.position.set(0, 0.08, 0.25); lid.add(lidM); chest.add(lid);
-  const trimM = new THREE.MeshStandardMaterial({ color: 0x4a4540, emissive: 0xc87a28, emissiveIntensity: 0.3, metalness: 0.5, roughness: 0.85 });
-  for (const x of [-0.3, 0.3]) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.54), trimM); s.position.set(x, 0.21, 0); chest.add(s); }
-  const lock = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.04), trimM); lock.position.set(0, 0.36, 0.27); chest.add(lock);
-  chest.traverse((o) => { o.castShadow = true; }); chest.visible = false; scene.add(chest);
+  // baúl: caja de madera desgastada con herrajes viejos; el dorado (plano) tiene herrajes de latón que brillan
+  const mkChest = (trim, glow) => {
+    const g = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.5), std(0x3b2a1a, 1, 0)); base.position.y = 0.2; g.add(base);
+    const lid = new THREE.Group(); lid.position.set(0, 0.4, -0.25);
+    const lidM = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.16, 0.52), std(0x45311f, 1, 0)); lidM.position.set(0, 0.08, 0.25); lid.add(lidM); g.add(lid);
+    const trimM = new THREE.MeshStandardMaterial(trim);
+    for (const x of [-0.3, 0.3]) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.54), trimM); s.position.set(x, 0.21, 0); g.add(s); }
+    const lock = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.04), trimM); lock.position.set(0, 0.36, 0.27); g.add(lock);
+    g.traverse((o) => { o.castShadow = true; }); g.visible = false; scene.add(g);
+    return { g, lid, trimM, glow };
+  };
+  const chests = { norm: mkChest({ color: 0x4a4540, emissive: 0xc87a28, emissiveIntensity: 0.3, metalness: 0.5, roughness: 0.85 }, 0.3), gold: mkChest({ color: 0xb8902a, emissive: 0xffb000, emissiveIntensity: 1.4, metalness: 0.9, roughness: 0.35 }, 1.4) };
   // radar: marcadores rojos visibles a través de paredes
   const radM = new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 0.3, 0.2), depthTest: false, transparent: true });
   const radar = Array.from({ length: 3 }, () => { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), radM); m.renderOrder = 999; m.visible = false; scene.add(m); return m; });
@@ -72,8 +76,11 @@ export function createItems(scene, nGren = 4, nMine = 6, camera) {
         p.m.position.copy(p.pos); p.m.position.y += k * 0.2; p.m.scale.setScalar(0.08 + 0.3 * k); p.m.material.opacity = 0.35 * (1 - k); p.m.quaternion.copy(camQ); }));
       mines.forEach((m, i) => { const x = S.mines[i]; m.visible = x.on; if (x.on) m.position.set(x.x, 0.035, x.z); });
       const blink = Math.sin(time * 9) > 0 ? 1 : 0.15; ledM.forEach((l) => l.color.setRGB(5 * blink, 0.3 * blink, 0.2 * blink));
-      const c = S.chest; chest.visible = !!c;
-      if (c) { chest.position.set(c.x, 0, c.z); chest.rotation.y = Math.atan2(-c.x, -c.z); lid.rotation.x += ((c.open ? -1.2 : 0) - lid.rotation.x) * 0.15; trimM.emissiveIntensity = c.open ? 0.05 : 0.35 + 0.25 * Math.sin(time * 3); }
+      for (const [k, c] of [['norm', S.chest], ['gold', S.gold]]) {
+        const h = chests[k]; h.g.visible = !!c; if (!c) continue;
+        h.g.position.set(c.x, 0, c.z); h.g.rotation.y = Math.atan2(-c.x, -c.z); h.lid.rotation.x += ((c.open ? -1.2 : 0) - h.lid.rotation.x) * 0.15;
+        h.trimM.emissiveIntensity = c.open ? 0.05 : h.glow * (0.7 + 0.35 * Math.sin(time * 3));
+      }
       radar.forEach((m, i) => { const e = S.enemies[i], on = S.radarT > 0 && e && e.active && e.alive; m.visible = on; if (on) { m.position.set(e.x, 2.35, e.z); m.rotation.y = time * 3; } });
     },
   };

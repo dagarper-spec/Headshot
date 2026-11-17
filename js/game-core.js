@@ -10,7 +10,7 @@ export const emit = (e, d) => { (L[e] || []).forEach((f) => f(d)); };
 export const S = {
   drones: Array.from({ length: 2 }, () => ({ on: false, alive: false, x: 0, y: 3.6, z: 0 })), droneSeen: false,
   state: 'menu', // menu | play | pause | win | over
-  level: 0, t: 0, grace: 0, deathT: 0, zoom: false, crouch: false, eye: 1.7,
+  hasPlan: false, gold: null, level: 0, t: 0, grace: 0, deathT: 0, zoom: false, crouch: false, eye: 1.7,
   hp: 2, maxHp: 2, mag: 6, reloadT: 0, fireT: 0, reloading: false, latch: false,
   player: { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 },
   enemies: [], // Object Pool reutilizado en cada nivel
@@ -117,6 +117,7 @@ export function startLevel(i) {
   S.st = { reloads: 0, headHits: 0, dmg: 0, droneT: 0 }; S.vest = S.pre.vest ? 1 : 0; S.magBonus = 0; S.radarT = 0; S.chestCoins = 0;
   if (S.pre.med) { S.maxHp++; S.hp++; }
   S.pre = { vest: false, med: false };
+  S.gold = lv.gold && !S.hasPlan ? { x: lv.gold[0], z: lv.gold[1], open: false, prog: 0, need: 2.5 } : null; // baúl dorado oculto (solo si aún no tienes el plano)
   S.chest = lv.chest ? { x: lv.chest[0], z: lv.chest[1], open: false, prog: 0 } : null;
   S.droneList = lv.drones || []; S.gren.forEach((g) => { g.on = false; }); S.mines.forEach((m) => { m.on = false; });
   S.enemies.forEach((e) => { e.active = false; e.alive = false; });
@@ -157,6 +158,12 @@ export function update(dt, inp) {
 // Cofre: quédate a menos de 1,6 m durante 1,5 s. Premios solo para esta partida.
 function updateChest(dt) {
   S.radarT = Math.max(0, S.radarT - dt);
+  const g = S.gold;
+  if (g && !g.open) { // baúl dorado: más tiempo; da el plano del revólver
+    const near = Math.hypot(S.player.x - g.x, S.player.z - g.z) < 1.6;
+    g.prog = near ? g.prog + dt : Math.max(0, g.prog - dt * 2);
+    if (g.prog >= g.need) { g.open = true; emit('gold'); }
+  }
   const ch = S.chest; if (!ch || ch.open) return;
   const near = Math.hypot(S.player.x - ch.x, S.player.z - ch.z) < 1.6;
   ch.prog = near ? ch.prog + dt : Math.max(0, ch.prog - dt * 2);
@@ -400,9 +407,9 @@ export function damageEnemy(e, head, pt, dir) {
     retreat(e); return;
   }
   if (head) {
-    if (e.helmet) { e.helmet = false; emit('helmet', { e, pt, dir }); retreat(e); return; }
+    if (e.helmet && CFG.weapon.kind !== 'rev') { e.helmet = false; emit('helmet', { e, pt, dir }); retreat(e); return; } // el .357 atraviesa el casco
     e.hp = 0;
-  } else if (e.vest) { e.vest = false; emit('armor', { e, pt, dir, vest: true }); retreat(e); return; } // la placa absorbe el primer tiro al cuerpo
+  } else if (e.vest && CFG.weapon.kind !== 'rev') { e.vest = false; emit('armor', { e, pt, dir, vest: true }); retreat(e); return; } // la placa absorbe el primer tiro al cuerpo
   else e.hp -= 1;
   if (e.hp > 0) { e.acc *= 0.7; emit('hit', { e, head, pt, dir }); retreat(e); return; }
   e.alive = false; e.aiming = false; e.moving = false; e.deadT = 0;

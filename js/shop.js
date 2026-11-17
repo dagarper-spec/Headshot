@@ -3,7 +3,7 @@ import { CFG, LEVELS } from './config.js';
 import { setGlove, setSkin } from './view-fps.js';
 import { COS } from './cosmetics.js';
 
-const BASE = { mag: CFG.weapon.mag, reload: CFG.weapon.reload, hp: CFG.player.hp };
+const BASE = { mag: CFG.weapon.mag, reload: CFG.weapon.reload, hp: CFG.player.hp, rate: CFG.weapon.rate };
 
 // Catálogo. 'up' = mejora permanente por niveles (prices[i] = precio del nivel i+1); 'glove' = cosmético; 'cons' = consumible de un nivel.
 export const ITEMS = [
@@ -17,6 +17,7 @@ export const ITEMS = [
   { id: 'gCamo',  kind: 'glove', name: 'Guantes camuflaje', desc: ['Cosmético'], price: 400, color: 0x4b5a35 },
   { id: 'gGold',  kind: 'glove', name: 'Guantes dorados', desc: ['Cosmético'], price: 700, color: 0xb8902a },
   // Pistola: acabados (mat = color, metal, rugosidad) y color del fogonazo (rgb HDR + luz)
+  { id: 'rev', kind: 'weapon', name: 'Revólver .357', desc: ['5 balas · perfora casco y placas'], price: 600, needPlan: true },
   { id: 'sMatte',  kind: 'skin', name: 'Negra mate',      desc: ['Acabado sin brillo'], price: 300, color: 0x15171a, metal: 0.25, rough: 0.85 },
   { id: 'sBronze', kind: 'skin', name: 'Bronce envejecido', desc: ['Metal viejo y gastado'], price: 450, color: 0x9a7440, metal: 0.85, rough: 0.5 },
   { id: 'sChrome', kind: 'skin', name: 'Cromada',         desc: ['Brillo de espejo'], price: 650, color: 0xe6ebf0, metal: 1, rough: 0.1 },
@@ -34,8 +35,12 @@ export function reward(level, t) {
 // Aplica las mejoras compradas a la configuración del juego.
 export function applyUpgrades(d) {
   const lv = (id) => +d.items[id] || 0;
-  CFG.weapon.mag = BASE.mag + lv('mag');
-  CFG.weapon.reload = BASE.reload * (1 - 0.15 * lv('fast'));
+  const rev = d.weapon === 'rev' && d.items.rev; // revólver .357: 5 balas, cadencia lenta, recarga lenta; perfora casco y placas
+  CFG.weapon.kind = rev ? 'rev' : 'pistol'; COS.rev = !!rev;
+  CFG.weapon.mag = (rev ? 5 : BASE.mag) + lv('mag');
+  CFG.weapon.rate = rev ? 0.55 : BASE.rate;
+  CFG.weapon.reload = (rev ? 2.4 : BASE.reload) * (1 - 0.15 * lv('fast'));
+  window.headshot && window.headshot.view && window.headshot.view.setWeapon(CFG.weapon.kind);
   CFG.weapon.stab = 1 - [0, 0.2, 0.35][lv('stab')];
   CFG.player.hp = BASE.hp + (lv('vest') ? 1 : 0);
   const g = ITEMS.find((i) => i.id === d.glove); setGlove(g ? g.color : 0);
@@ -54,9 +59,10 @@ const ICON = {
   glove: (c) => `<path d="M20 58V36l-8-10c-2-3 2-7 5-4l5 5V12c0-3 5-3 5 0v14V9c0-3 5-3 5 0v17V11c0-3 5-3 5 0v18V16c0-3 5-3 5 0v26c0 8-4 16-10 16z" fill="${c}" stroke="#0007" stroke-width="2" stroke-linejoin="round"/><path d="M20 50h22" stroke="#0006" stroke-width="3"/>`,
 };
 ICON.skin = (c) => `<path d="M6 24h38l4-6h10v10h-8l-3 4H34l-2 14H20l2-14H6z" fill="${c}" stroke="#0009" stroke-width="2.5" stroke-linejoin="round"/><path d="M12 28h28" stroke="#fff6" stroke-width="2"/>`;
+ICON.rev = () => '<circle cx="30" cy="26" r="10" fill="#3a4048" stroke="#aab4c0" stroke-width="2.5"/><path d="M38 22h20v8H38z" fill="#23272d" stroke="#aab4c0" stroke-width="2"/><path d="M24 34l-8 22h12l4-18z" fill="#6a4426" stroke="#0009" stroke-width="2"/><circle cx="30" cy="26" r="3" fill="#111"/>';
 ICON.flash = (c) => `<g fill="${c}"><path d="M32 6l5 17 17-5-12 13 14 10-18 1 3 18-9-15-11 14 2-18-17-3 14-10-10-14 16 6z"/></g><circle cx="32" cy="32" r="6" fill="#fff"/>`;
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
-const TABS = [['up', 'Mejoras'], ['cons', 'Consumibles'], ['glove', 'Guantes'], ['gun', 'Pistola']];
+const TABS = [['up', 'Mejoras'], ['cons', 'Consumibles'], ['glove', 'Guantes'], ['gun', 'Arma']];
 let tab = 'up';
 
 // Pinta la tienda como cuadrícula de tarjetas con imagen. save() guarda los cambios.
@@ -67,7 +73,7 @@ export function renderShop(d, save) {
   for (const [k, n] of TABS) { const b = document.createElement('button'); b.className = 'tab' + (k === tab ? ' on' : ''); b.textContent = n; b.onclick = () => { tab = k; renderShop(d, save); }; tabs.appendChild(b); }
   const box = document.getElementById('items'); box.innerHTML = '';
   const bossDone = !!(d.stars && d.stars[3]);
-  for (const it of ITEMS.filter((i) => (tab === 'gun' ? i.kind === 'skin' || i.kind === 'flash' : i.kind === tab))) {
+  for (const it of ITEMS.filter((i) => (tab === 'gun' ? i.kind === 'skin' || i.kind === 'flash' || i.kind === 'weapon' : i.kind === tab))) {
     const el = document.createElement('button'); let title = it.name, desc, st, canBuy = false, buy = null, pips = '', cls = 'item';
     if (it.kind === 'up') {
       const lv = +d.items[it.id] || 0, max = it.prices.length, price = it.prices[lv];
@@ -77,12 +83,17 @@ export function renderShop(d, save) {
     } else if (it.kind === 'cons') {
       const n = d.cons[it.id] || 0; desc = it.desc[0]; pips = n ? `<div class="have">Tienes ${n}</div>` : '';
       st = n >= 3 ? 'Máximo' : '$ ' + it.price; canBuy = d.coins >= it.price && n < 3; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.cons[it.id] = n + 1; };
+    } else if (it.kind === 'weapon') { // el revólver necesita el plano del baúl dorado; se alterna con la pistola
+      const own = !!d.items[it.id], eq = d.weapon === it.id; desc = it.desc[0];
+      if (!d.items.plano && !own) { st = 'Falta el plano'; cls += ' no'; desc = 'Busca el baúl dorado oculto en el almacén'; }
+      else if (own) { st = eq ? 'Equipado' : 'Equipar'; cls += eq ? ' own eq' : ' own'; canBuy = true; buy = () => { d.weapon = eq ? '' : it.id; }; }
+      else { st = '$ ' + it.price; canBuy = d.coins >= it.price; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.items[it.id] = 1; d.weapon = it.id; }; }
     } else {
       const slot = it.kind === 'glove' ? 'glove' : it.kind, own = !!d.items[it.id], eq = d[slot] === it.id; desc = it.desc[0];
       if (own) { st = eq ? 'Equipado' : 'Equipar'; cls += eq ? ' own eq' : ' own'; canBuy = true; buy = () => { d[slot] = eq ? '' : it.id; }; }
       else { st = '$ ' + it.price; canBuy = d.coins >= it.price; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.items[it.id] = 1; d[slot] = it.id; }; }
     }
-    const ic = it.kind === 'glove' ? ICON.glove(hex(it.color)) : it.kind === 'skin' ? ICON.skin(hex(it.color)) : it.kind === 'flash' ? ICON.flash(hex(it.color)) : ICON[it.id]();
+    const ic = it.kind === 'glove' ? ICON.glove(hex(it.color)) : it.kind === 'weapon' ? ICON.rev() : it.kind === 'skin' ? ICON.skin(hex(it.color)) : it.kind === 'flash' ? ICON.flash(hex(it.color)) : ICON[it.id]();
     el.className = cls;
     el.innerHTML = `<div class="pic"><svg viewBox="0 0 64 64">${ic}</svg></div><b>${title}</b><span>${desc}</span>${pips}<em>${st}</em>`;
     el.onclick = () => { if (!canBuy || !buy) return; buy(); save(); applyUpgrades(d); renderShop(d, save); };

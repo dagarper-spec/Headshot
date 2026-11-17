@@ -12,6 +12,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { CFG, QUALITY, ZONES } from './config.js';
 import { buildRoof } from './view-roof.js';
 import { createDrones } from './view-drone.js';
+import { buildRevolver } from './view-revolver.js';
 import { createItems, buildShield } from './view-items.js';
 import { makeMaterials, uvs } from './view-textures.js';
 import { buildSoldier, buildViewPistol, poseSoldier } from './view-models.js';
@@ -131,6 +132,7 @@ export function createView(canvas, tier, model, fpsData, props) {
   gun.scale.setScalar(fpsv ? 0.0095 : 0.85);
   gun.position.set(...GB);
   camera.add(gun);
+  const rev = buildRevolver(); camera.add(rev); let weapon = 'pistol'; // arma equipada: 'pistol' | 'rev'
 
   // ---------- Enemigos (un slot visual por cada enemigo del pool) ----------
   const lg = new THREE.CylinderGeometry(0.005, 0.005, 1, 5).rotateX(Math.PI / 2);
@@ -200,6 +202,7 @@ export function createView(canvas, tier, model, fpsData, props) {
   let zk = 0, wasRl = false; // zk: 0 = cadera, 1 = apuntando con zoom
   const view = {
     setZone,
+    setWeapon(k) { weapon = k; gun.visible = k !== 'rev'; rev.visible = k === 'rev'; },
     warn: [], // enemigos que te apuntan: {a: ángulo en pantalla, k: carga 0..1} (lo lee la interfaz)
     scene, camera,
     // rp: progreso de recarga 0..1 (o -1); fx aporta retroceso y temblor.
@@ -215,7 +218,10 @@ export function createView(canvas, tier, model, fpsData, props) {
         p.yaw + Math.cos(time * 1.3) * sway + (Math.random() - 0.5) * fx.shake * 0.03, dead * 0.5, 'YXZ');
       camera.rotation.copy(eu);
       const rl = rp >= 0 ? Math.sin(rp * Math.PI) : 0;
-      if (fpsv) {
+      if (weapon === 'rev') { // revólver: retroceso más fuerte; el tambor gira al disparar y al recargar
+        rev.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.16, -0.36 + fx.kick * 0.08 + 0.04 * zk);
+        rev.rotation.set(fx.kick * 0.42 - rl * 0.9, 0, rl * 0.5); rev.userData.drum.rotation.z += (fx.kick > 0.5 ? 0.9 : 0) + rl * 0.2;
+      } else if (fpsv) {
         if (rp >= 0 && !wasRl) fpsv.reload(CFG.weapon.reload); wasRl = rp >= 0; fpsv.update(dt, rp);
         gun.position.set(GB[0] * (1 - zk) + bob * 0.003, GB[1] + (GZY - GB[1]) * zk + bob * 0.004 - rl * 0.02, GB[2] + fx.kick * 0.05 + 0.03 * zk);
         gun.rotation.set(fx.kick * 0.18, 0, 0);
@@ -271,7 +277,7 @@ export function createView(canvas, tier, model, fpsData, props) {
     shot() { if (fpsv) fpsv.fire(); }, // retroceso de la corredera del jugador
     get viewH() { return vh; },
     // Boca del arma y ventana de expulsión del jugador en el mundo (para fogonazo y casquillos).
-    muzzle(out) { if (fpsv) return fpsv.muzzle.getWorldPosition(out); return out.set(0.17, -0.12, -0.62).applyMatrix4(camera.matrixWorld); },
+    muzzle(out) { if (weapon === 'rev') return rev.userData.muzzle.getWorldPosition(out); if (fpsv) return fpsv.muzzle.getWorldPosition(out); return out.set(0.17, -0.12, -0.62).applyMatrix4(camera.matrixWorld); },
     ejector(out) { if (fpsv) return fpsv.ejector.getWorldPosition(out); return out.set(0.1, -0.1, -0.4).applyMatrix4(camera.matrixWorld); },
     render() { if (q.bloom || q.fxaa) composer.render(); else renderer.render(scene, camera); },
     setQuality, resize,
