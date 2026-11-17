@@ -122,6 +122,17 @@ function apply() {
   if (song) { if (menu && musicOn) song.play().catch(() => {}); else song.pause(); }
   calmSet(!menu && musicOn);
 }
+// Zumbido del dron: rotores con tremolo; vol 0..1 según cercanía (0 = apagado).
+let dh = null;
+sfx.droneHum = (vol) => {
+  if (!ac) return;
+  if (!dh) {
+    const o = ac.createOscillator(), o2 = ac.createOscillator(), l = ac.createOscillator(), lg = ac.createGain(), g = ac.createGain(), f = ac.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.value = 160; o2.type = 'square'; o2.frequency.value = 163; l.frequency.value = 22; lg.gain.value = 0.5; f.type = 'bandpass'; f.frequency.value = 520; f.Q.value = 0.8; g.gain.value = 0;
+    l.connect(lg); lg.connect(g.gain); o.connect(f); o2.connect(f); f.connect(g); g.connect(master); o.start(); o2.start(); l.start(); dh = g;
+  }
+  dh.gain.setTargetAtTime(vol * 0.06, ac.currentTime, 0.1);
+};
 export const music = {
   // m = 'menu' (MP3) | 'game' (pista calmada). Llamar desde un gesto del usuario en móvil.
   mode(m) { mode = m; apply(); },

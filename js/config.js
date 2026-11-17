@@ -66,4 +66,6 @@ export const LEVELS = [
   // ---- Zona 2: azotea ----
   { zone: 1, name: 'Guardia nocturna', par: 30, pay: 350, goal: 'head', goalText: 'Acierta un headshot',
     enemies: [{ x: 8, z: -11, helmet: false }, { x: -5.5, z: -8.5, helmet: false, tint: 0x6a7f5a }], aim: 1.2, react: 0.7, acc: 0.27, burst: 0.1, hide: [2.2, 3.8], chest: [13.0, 8.5] },
+  { zone: 1, name: 'Ojo en el cielo', par: 40, pay: 400, goal: 'drone', goalText: 'Derriba el dron en 12 s', drones: [{ x: 0, z: -2 }],
+    enemies: [{ x: 10.5, z: -10.5, helmet: false, role: 'flank', tint: 0x5a5d62 }], aim: 1.15, react: 0.65, acc: 0.27, burst: 0.1, hide: [2.2, 3.6], chest: [-13, -10] },
 ];

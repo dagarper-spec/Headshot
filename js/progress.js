@@ -24,7 +24,7 @@ export function unlocked(d, i) {
 // Estrellas conseguidas en el intento: superar, tiempo <= par y reto propio del nivel.
 export function evalStars(S) {
   const L = LEVELS[S.level], g = L.goal;
-  return [true, S.t <= L.par, g === 'norel' ? S.st.reloads === 0 : g === 'head' ? S.st.headHits > 0 : S.st.dmg === 0];
+  return [true, S.t <= L.par, g === 'norel' ? S.st.reloads === 0 : g === 'drone' ? S.st.droneT > 0 && S.st.droneT <= 12 : g === 'head' ? S.st.headHits > 0 : S.st.dmg === 0];
 }
 
 // Aplica el resultado a la partida guardada y devuelve el desglose del pago.

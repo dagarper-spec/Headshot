@@ -11,6 +11,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { CFG, QUALITY, ZONES } from './config.js';
 import { buildRoof } from './view-roof.js';
+import { createDrones } from './view-drone.js';
 import { createItems, buildShield } from './view-items.js';
 import { makeMaterials, uvs } from './view-textures.js';
 import { buildSoldier, buildViewPistol, poseSoldier } from './view-models.js';
@@ -113,7 +114,8 @@ export function createView(canvas, tier, model, fpsData, props) {
   const z1 = new THREE.Group(); scene.children.slice(n0).forEach((c) => z1.add(c)); scene.add(z1);
   const roof = buildRoof(ZONES[1].crates, H), rlamps = roof.lamps; scene.add(roof.group);
   const hemi = scene.children.find((c) => c.isHemisphereLight), ENV = [
-    { bg: 0x07080a, fog: [0x0b0d11, 0.03], hemi: 0.5, exp: 1.1 }, { bg: 0x1a1c2c, fog: [0x2a2438, 0.016], hemi: 0.75, exp: 1.25 }];
+    { bg: 0x07080a, fog: [0x0b0d11, 0.03], hemi: 0.5, exp: 1.1 }, { bg: 0x8a8fb0, fog: [0x7a7f9c, 0.012], hemi: 1.1, exp: 1.3 }];
+  const drones = createDrones(scene, 2);
   let zone = 0;
   // Cambia el escenario visible: almacén (zona 0) o azotea (zona 1).
   function setZone(z) {
@@ -222,7 +224,7 @@ export function createView(canvas, tier, model, fpsData, props) {
         gun.rotation.set(fx.kick * 0.22 - rl * 0.8, 0, rl * 0.5);
       }
       if (zone === 1) roof.sky.position.set(p.x, 0, p.z);
-      items.sync(S, time);
+      drones.sync(S, time); items.sync(S, time);
       lamps[1].intensity = 380 * (Math.random() < 0.03 ? 0.3 : 1); // lámpara que parpadea
       panels[1].color.setScalar(lamps[1].intensity < 380 ? 0.8 : 4);
       const k = Math.min(1, dt * 9);

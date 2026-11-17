@@ -2,6 +2,7 @@
 import { CFG } from './config.js';
 import { S, emit, damageEnemy, shieldBlocks } from './game-core.js';
 import { rayWorld, rayCyl, surface } from './game-geom.js';
+import { raySphere, killDrone } from './game-drone.js';
 
 export const maxMag = () => CFG.weapon.mag + S.magBonus;
 export const stats = () => ({ mag: maxMag(), reload: CFG.weapon.reload });
@@ -39,6 +40,7 @@ export function aimAssist() {
     const h = rayCyl(e, p.x, S.eye, p.z, dx, dy, dz, 0.5);
     if (h && h.t < wall) return true;
   }
+  for (const d of S.drones) if (d.on && d.alive && raySphere(p.x, S.eye, p.z, dx, dy, dz, d, 0.9) < wall) return true;
   return false;
 }
 
@@ -57,7 +59,10 @@ function shoot() {
     const h = rayCyl(e, ox, oy, oz, dx, dy, dz);
     if (h && h.t < bt) { bt = h.t; best = e; head = h.head; }
   }
+  let drone = null;
+  for (const d of S.drones) { if (!d.on || !d.alive) continue; const t = raySphere(ox, oy, oz, dx, dy, dz, d); if (t < bt) { bt = t; drone = d; best = null; head = false; } }
   const end = [ox + dx * bt, oy + dy * bt, oz + dz * bt];
+  if (drone) { emit('shot', { end, hit: true, head: false, dir: [dx, dy, dz], surf: null }); killDrone(drone, end, [dx, dy, dz]); return; }
   if (best && shieldBlocks(best, [dx, dy, dz])) { // el escudo lo detiene
     emit('shot', { end, hit: false, head: false, dir: [dx, dy, dz], surf: { kind: 'metal', n: [-dx, -dy, -dz] } }); emit('shield', { pt: end });
     return;

@@ -1,6 +1,7 @@
 // Punto de entrada: une lógica, vista, audio e interfaz. Bucle con Delta Time y calidad adaptable.
 import { CFG, TIERS, LEVELS } from './config.js';
 import * as core from './game-core.js';
+import { updateDrones, spawnDrones } from './game-drone.js';
 import { stats, reload, updateCombat, aimAssist, spread } from './game-combat.js';
 import { loadModel, loadMixamo, loadProps } from './loader.js';
 import { createView } from './view-scene.js';
@@ -90,10 +91,13 @@ async function boot() {
     fx.blood(d.pt, d.dir || [0, 0, 0], d.head ? 2.4 : 1.5); splatBehind(d.pt, d.dir, d.head ? 0.8 : 0.55);
     const x = d.e.x, z = d.e.z; setTimeout(() => fx.pool(x, z), 500); // el charco crece bajo el cuerpo
   });
+  on('droneSpot', () => { ui.toast('¡El dron te ha localizado!'); sfx.warn(0.6); });
+  on('droneDown', (d) => { sfx.kill(); sfx.hit(); ui.hitmarker(true, false); fx.impact(d.pt, [0, 1, 0], 'metal', 1.6, false); ui.toast('Dron derribado'); });
+  on('droneCrash', (d) => { fx.impact([d.x, 0.1, d.z], [0, 1, 0], 'metal', 2.2, false); sfx.armor(); });
   on('hurt', (d) => { sfx.hurt(); ui.hurt(); fx.shake = d.head ? 1 : 0.6; if (!d.head) ui.toast('Herido: un tiro más y caes'); });
   on('reload', () => { const r = CFG.weapon.reload; sfx.magOut(r * 0.22); sfx.magIn(r * 0.62); sfx.slide(r * 0.86); });
   on('empty', () => sfx.empty());
-  on('level', (i) => { view.setZone(LEVELS[i].zone || 0); fx.clear(); ui.banner(LEVELS[i].name.toUpperCase(), 1600); sfx.wave(); });
+  on('level', (i) => { spawnDrones(S.droneList || []); view.setZone(LEVELS[i].zone || 0); fx.clear(); ui.banner(LEVELS[i].name.toUpperCase(), 1600); sfx.wave(); });
   const finish = () => { slowT = 1.1; endTimer = 1.3; setTimeout(() => music.mode('menu'), 1300); };
   on('win', finish);
   on('over', finish);
@@ -194,11 +198,12 @@ async function boot() {
       // ruletas/teclado -> velocidad angular con Delta Time; ayuda al apuntar y zoom reducen la sensibilidad
       const k = (dt / CFG.player.sens) * (S.zoom ? 0.5 : 1) * (input.touch && aimAssist() ? 0.5 : 1);
       core.look(input.dx - input.turn * 2.4 * k + input.rx * 3.3 * k, input.dy + input.ry * 2.3 * k);
-      core.update(dt, input);
+      updateDrones(dt); core.update(dt, input);
       if (input.reload) reload();
       updateCombat(dt, input.fire || input.pulse > 0); // pulse = toque en la ruleta derecha
     } else core.update(dt, input);
     input.dx = input.dy = 0; input.reload = false;
+    sfx.droneHum(S.state === 'play' ? S.drones.reduce((v, d) => (d.on && d.alive ? Math.max(v, 1 - Math.hypot(d.x - S.player.x, d.z - S.player.z) / 22) : v), 0) : 0);
     fx.update(dt); music.update(raw);
     { const km = ui.warn(S.state === 'play' ? view.warn : []); // aviso de apuntado: pitido que se acelera al cargar el tiro
       if (km > 0) { wT -= raw; if (wT <= 0) { sfx.warn(km); wT = 0.5 - 0.38 * km; } } else wT = 0; }

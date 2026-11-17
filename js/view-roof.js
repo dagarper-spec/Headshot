@@ -85,13 +85,16 @@ export function buildRoof(crates, H) {
     s.shadow.bias = -0.0005; s.shadow.normalBias = 0.03; group.add(s, s.target); lamps.push(s);
   });
   // Luz de luna fría, sin sombras
-  const moon = new THREE.DirectionalLight(0x6f86c0, 0.55); moon.position.set(-18, 30, -22); group.add(moon);
+  const moon = new THREE.DirectionalLight(0xffd0a0, 0.9); moon.position.set(-18, 30, -22); group.add(moon);
 
   // ---- Skyline: edificios con ventanas encendidas ----
-  const winT = (seed) => tex(128, 256, '#0d1118', (x, w, h) => {
-    for (let r = 0; r < 16; r++) for (let c = 0; c < 8; c++) { const on = ((r * 31 + c * 17 + seed * 7) % 10) < 3; x.fillStyle = on ? (((r + c + seed) % 3) ? '#e8bd6a' : '#9fc6e6') : '#16202c'; x.fillRect(c * 16 + 3, r * 16 + 3, 10, 9); }
+  // Fachadas de tonos distintos (azul, ladrillo, beige, gris) con pocas ventanas pálidas: se distinguen del cielo y del suelo.
+  const FAC = ['#56657a', '#8a5c4c', '#9a9078', '#6a727c'];
+  const winT = (seed) => tex(128, 256, FAC[seed], (x, w, h) => {
+    speck(x, w, h, 500, ['rgba(0,0,0,.08)', 'rgba(255,255,255,.05)'], 4);
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 4; c++) { const k = (r * 31 + c * 17 + seed * 7) % 9; if (k < 2) { x.fillStyle = '#f4f1e6'; x.fillRect(c * 32 + 7, r * 32 + 6, 18, 20); } else if (k < 4) { x.fillStyle = 'rgba(10,16,26,.4)'; x.fillRect(c * 32 + 7, r * 32 + 6, 18, 20); } }
   });
-  const winMats = [0, 1, 2, 3].map((s) => { const t = winT(s); t.wrapS = t.wrapT = THREE.RepeatWrapping; return new THREE.MeshBasicMaterial({ map: t, color: 0x8c8c9c }); });
+  const winMats = [0, 1, 2, 3].map((s) => { const t = winT(s); t.wrapS = t.wrapT = THREE.RepeatWrapping; return new THREE.MeshBasicMaterial({ map: t, color: 0xc8c8d4 }); });
   let seedv = 7; const rnd = () => (seedv = (seedv * 16807) % 2147483647) / 2147483647;
   for (let a = 0; a < 34; a++) {
     const ang = (a / 34) * Math.PI * 2 + rnd() * 0.08, dist = 40 + rnd() * 24, w = 8 + rnd() * 10, d = 8 + rnd() * 10, h = 16 + rnd() * 46;
@@ -99,7 +102,7 @@ export function buildRoof(crates, H) {
     const m = new THREE.Mesh(g, winMats[a % 4]); m.position.set(Math.cos(ang) * dist, h / 2 - 4, Math.sin(ang) * dist); m.rotation.y = rnd() * 1.5; group.add(m);
   }
   // Cielo: cúpula con degradado crepuscular y luna
-  const skyT = tex(8, 256, '#000', (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#080c22'); g.addColorStop(0.55, '#2a2850'); g.addColorStop(0.8, '#8a4a5a'); g.addColorStop(0.92, '#e08a50'); g.addColorStop(1, '#f0b070'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  const skyT = tex(8, 256, '#000', (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#2a3f78'); g.addColorStop(0.5, '#5a6fa8'); g.addColorStop(0.78, '#c98a8c'); g.addColorStop(0.92, '#f2b27a'); g.addColorStop(1, '#ffd29a'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(76, 24, 16), new THREE.MeshBasicMaterial({ map: skyT, side: THREE.BackSide, fog: false, depthWrite: false })); sky.renderOrder = -2; group.add(sky);
   const moonM = new THREE.Mesh(new THREE.CircleGeometry(3.2, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.2, 2.0), fog: false })); moonM.position.set(-40, 42, -50); moonM.lookAt(0, 0, 0); group.add(moonM);
 

@@ -11,7 +11,7 @@ export const ui = {
     txt('hpt', '\u25CF'.repeat(S.hp) + '\u25CB'.repeat(S.maxHp - S.hp));
     $('hpf').style.width = (S.hp / S.maxHp) * 100 + '%';
     $('shf').style.width = (S.vest > 0 ? 100 : 0) + '%';
-    txt('wv', name);
+    txt('wv', name); $('dalert').classList.toggle('on', !!S.droneSeen);
     txt('score', mmss(S.t));
     txt('mag', S.reloading ? '--' : S.mag);
     const cb = $('chestbar'), ch = S.chest, on = ch && !ch.open && ch.prog > 0.02;

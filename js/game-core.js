@@ -8,6 +8,7 @@ export const on = (e, f) => (L[e] || (L[e] = [])).push(f);
 export const emit = (e, d) => { (L[e] || []).forEach((f) => f(d)); };
 
 export const S = {
+  drones: Array.from({ length: 2 }, () => ({ on: false, alive: false, x: 0, y: 3.6, z: 0 })), droneSeen: false,
   state: 'menu', // menu | play | pause | win | over
   level: 0, t: 0, grace: 0, deathT: 0, zoom: false, crouch: false, eye: 1.7,
   hp: 2, maxHp: 2, mag: 6, reloadT: 0, fireT: 0, reloading: false, latch: false,
@@ -113,11 +114,11 @@ export function startLevel(i) {
   Object.assign(S, { t: 0, grace: 3, deathT: 0, hp: CFG.player.hp, maxHp: CFG.player.hp, mag: CFG.weapon.mag,
     reloading: false, fireT: 0, latch: false, zoom: false, crouch: false, eye: CFG.eye, state: 'play' });
   Object.assign(S.player, { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 });
-  S.st = { reloads: 0, headHits: 0, dmg: 0 }; S.vest = S.pre.vest ? 1 : 0; S.magBonus = 0; S.radarT = 0; S.chestCoins = 0;
+  S.st = { reloads: 0, headHits: 0, dmg: 0, droneT: 0 }; S.vest = S.pre.vest ? 1 : 0; S.magBonus = 0; S.radarT = 0; S.chestCoins = 0;
   if (S.pre.med) { S.maxHp++; S.hp++; }
   S.pre = { vest: false, med: false };
   S.chest = lv.chest ? { x: lv.chest[0], z: lv.chest[1], open: false, prog: 0 } : null;
-  S.gren.forEach((g) => { g.on = false; }); S.mines.forEach((m) => { m.on = false; });
+  S.droneList = lv.drones || []; S.gren.forEach((g) => { g.on = false; }); S.mines.forEach((m) => { m.on = false; });
   S.enemies.forEach((e) => { e.active = false; e.alive = false; });
   lv.enemies.forEach((d, k) => {
     const e = S.enemies[k];
@@ -306,7 +307,7 @@ function updateEnemies(dt) {
     if (e.state === 'hide') {
       e.crouch = true; e.moving = false; turn(e, toP, dt);
       if (S.grace > 0) continue;
-      if (e.sees) { e.react -= dt; if (e.react <= 0) beginAim(e); }
+      if (e.sees) { e.react -= dt * (S.droneSeen ? 1.5 : 1); if (e.react <= 0) beginAim(e); }
       else {
         e.react = lv.react;
         const t = tac(e);
@@ -337,7 +338,7 @@ function updateEnemies(dt) {
     } else if (e.state === 'aim') {
       e.aiming = true; e.moving = false; e.crouch = false; turn(e, toP, dt);
       if (!e.sees) { e.lost += dt; if (e.lost > 0.9) retreat(e); continue; }
-      e.lost = 0; e.aimT -= dt;
+      e.lost = 0; e.aimT -= dt * (S.droneSeen ? 1.35 : 1);
       e.aimK = Math.max(0, Math.min(1, 1 - e.aimT / (e.aimDur || 1)));
       if (e.aimT <= 0) {
         enemyShoot(e); e.shots--; e.aimT = e.aimDur = 0.5; e.aimK = 0;
@@ -351,7 +352,7 @@ function enemyShoot(e) {
   const p = S.player, dx = p.x - e.x, dz = p.z - e.z, dist = Math.hypot(dx, dz);
   const from = [e.x + Math.sin(e.face) * 0.55, 1.5, e.z + Math.cos(e.face) * 0.55];
   const sees = e.sees; // misma visión que usó para decidir disparar
-  const acc = Math.max(0.12, e.acc * (1 - dist / 45) * (p.speed > 1 ? 0.65 : 1) * (S.crouch ? 0.75 : 1)); // agachado = blanco más pequeño
+  const acc = Math.max(0.12, (e.acc + (S.droneSeen ? 0.12 : 0)) * (1 - dist / 45) * (p.speed > 1 ? 0.65 : 1) * (S.crouch ? 0.75 : 1)); // agachado = blanco más pequeño
   let end, hit = false, head = false;
   if (sees && Math.random() < acc) { hit = true; head = Math.random() < 0.3; end = [p.x, head ? S.eye : S.eye - 0.5, p.z]; }
   else if (sees) end = [p.x + (Math.random() - 0.5) * 1.4, 0.4 + Math.random() * 1.6, p.z + (Math.random() - 0.5) * 1.4];
@@ -392,5 +393,5 @@ export function damageEnemy(e, head, pt, dir) {
   if (e.hp > 0) { e.acc *= 0.7; emit('hit', { e, head, pt, dir }); retreat(e); return; }
   e.alive = false; e.aiming = false; e.moving = false; e.deadT = 0;
   emit('kill', { e, head, pt, dir });
-  if (!S.enemies.some((o) => o.active && o.alive)) { S.state = 'win'; emit('win', { time: S.t }); }
+  if (!S.enemies.some((o) => o.active && o.alive) && !S.drones.some((d) => d.on && d.alive)) { S.state = 'win'; emit('win', { time: S.t }); }
 }
