@@ -1,5 +1,5 @@
 // Lógica pura del duelo (sin Three.js ni DOM): estado, jugador, IA enemiga con coberturas y niveles.
-import { CFG, LEVELS } from './config.js';
+import { CFG, LEVELS, setZone } from './config.js';
 import { blocked, free, rayWorld, surface } from './game-geom.js';
 
 // Bus de eventos mínimo: la lógica emite, la vista/audio/UI escuchan.
@@ -28,7 +28,9 @@ for (let i = 0; i < CFG.pool; i++) {
 
 // Puntos de cobertura precalculados: a lo largo del perímetro de cada contenedor/pilar (a 0,7 m de distancia).
 const SPOTS = [];
-for (const b of CFG.crates) {
+function buildSpots() {
+  SPOTS.length = 0;
+  for (const b of CFG.crates) {
   const hx = b[2] / 2 + 0.7, hz = b[3] / 2 + 0.7, per = 4 * (hx + hz), n = Math.max(8, Math.round(per / 1.6));
   for (let k = 0; k < n; k++) { // punto k sobre el rectángulo (recorrido uniforme)
     let t = (k / n) * per, x, z;
@@ -36,12 +38,16 @@ for (const b of CFG.crates) {
     else if ((t -= 2 * hz) < 2 * hx) { x = hx - t; z = hz; } else { t -= 2 * hx; x = -hx; z = hz - t; }
     if (free(b[0] + x, b[1] + z, 0.5)) SPOTS.push({ x: b[0] + x, z: b[1] + z });
   }
+  }
 }
 
 // ---------- Navegación: rejilla de 0,5 m + A* (8 vecinos). Los enemigos rodean los contenedores en vez de atascarse ----------
 const CELL = 0.5, NN = Math.round((CFG.half * 2) / CELL), NAVR = 0.48;
 const WALK = new Uint8Array(NN * NN);
-for (let iz = 0; iz < NN; iz++) for (let ix = 0; ix < NN; ix++) WALK[iz * NN + ix] = free(-CFG.half + (ix + 0.5) * CELL, -CFG.half + (iz + 0.5) * CELL, NAVR) ? 1 : 0;
+const buildWalk = () => { for (let iz = 0; iz < NN; iz++) for (let ix = 0; ix < NN; ix++) WALK[iz * NN + ix] = free(-CFG.half + (ix + 0.5) * CELL, -CFG.half + (iz + 0.5) * CELL, NAVR) ? 1 : 0; };
+// Reconstruye cobertura y navegación (al cambiar de zona cambian los obstáculos).
+function buildNav() { buildSpots(); buildWalk(); }
+buildNav();
 const cellOf = (v) => Math.max(0, Math.min(NN - 1, Math.floor((v + CFG.half) / CELL)));
 const centerOf = (i) => -CFG.half + (i + 0.5) * CELL;
 
@@ -103,6 +109,7 @@ const lvl = () => LEVELS[S.level];
 export function startLevel(i) {
   S.level = i % LEVELS.length;
   const lv = lvl();
+  if ((lv.zone || 0) !== (CFG.zone || 0) || !CFG.zoneInit) { setZone(lv.zone || 0); CFG.zoneInit = true; buildNav(); }
   Object.assign(S, { t: 0, grace: 3, deathT: 0, hp: CFG.player.hp, maxHp: CFG.player.hp, mag: CFG.weapon.mag,
     reloading: false, fireT: 0, latch: false, zoom: false, crouch: false, eye: CFG.eye, state: 'play' });
   Object.assign(S.player, { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 });

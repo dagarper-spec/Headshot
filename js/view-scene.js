@@ -9,7 +9,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { CFG, QUALITY } from './config.js';
+import { CFG, QUALITY, ZONES } from './config.js';
+import { buildRoof } from './view-roof.js';
 import { createItems, buildShield } from './view-items.js';
 import { makeMaterials, uvs } from './view-textures.js';
 import { buildSoldier, buildViewPistol, poseSoldier } from './view-models.js';
@@ -35,7 +36,7 @@ export function createView(canvas, tier, model, fpsData, props) {
   pm.dispose();
   scene.add(new THREE.HemisphereLight(0x8899aa, 0x1a1410, 0.5));
 
-  const camera = new THREE.PerspectiveCamera(75, 1, 0.05, 80);
+  const camera = new THREE.PerspectiveCamera(75, 1, 0.05, 130);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
 
@@ -59,6 +60,7 @@ export function createView(canvas, tier, model, fpsData, props) {
   };
   const plane = (w, h, u, v) => uvs(new THREE.PlaneGeometry(w, h), u, v);
 
+  const n0 = scene.children.length; // todo lo siguiente (hasta las lámparas) es la zona 1
   add(plane(W, W, 7, 7), M.floor, 0, 0, 0, false).rotation.x = -Math.PI / 2;
   add(plane(W, W, 5, 5), M.ceil, 0, HT, 0, false).rotation.x = Math.PI / 2;
   [[0, -H, 0], [0, H, Math.PI], [-H, 0, Math.PI / 2], [H, 0, -Math.PI / 2]].forEach(([x, z, r]) => {
@@ -107,6 +109,17 @@ export function createView(canvas, tier, model, fpsData, props) {
     s.shadow.bias = -0.0004; s.shadow.normalBias = 0.03;
     scene.add(s, s.target); lamps.push(s);
   });
+
+  const z1 = new THREE.Group(); scene.children.slice(n0).forEach((c) => z1.add(c)); scene.add(z1);
+  const roof = buildRoof(ZONES[1].crates, H), rlamps = roof.lamps; scene.add(roof.group);
+  const hemi = scene.children.find((c) => c.isHemisphereLight), ENV = [
+    { bg: 0x07080a, fog: [0x0b0d11, 0.03], hemi: 0.5, exp: 1.1 }, { bg: 0x1a1c2c, fog: [0x2a2438, 0.016], hemi: 0.75, exp: 1.25 }];
+  let zone = 0;
+  // Cambia el escenario visible: almacén (zona 0) o azotea (zona 1).
+  function setZone(z) {
+    zone = z; z1.visible = z === 0; roof.group.visible = z === 1;
+    const e = ENV[z]; scene.background.setHex(e.bg); scene.fog.color.setHex(e.fog[0]); scene.fog.density = e.fog[1]; hemi.intensity = e.hemi; renderer.toneMappingExposure = e.exp;
+  }
 
   // ---------- Arma en primera persona ----------
   // Pistola externa animada (Desert Eagle + mano enguantada) o, si no hay modelo, la procedural.
@@ -165,9 +178,10 @@ export function createView(canvas, tier, model, fpsData, props) {
   function setQuality(name) {
     q = QUALITY[name];
     renderer.shadowMap.enabled = q.shadow > 0;
-    lamps.forEach((l, i) => {
-      l.visible = i < q.lights;
-      l.castShadow = q.shadow > 0 && i < q.spots;
+    [...lamps, ...rlamps].forEach((l, i) => {
+      const k = i % 4; // las 4 lámparas de cada zona se reparten por calidad
+      l.visible = k < q.lights;
+      l.castShadow = q.shadow > 0 && k < q.spots;
       if (l.shadow.map) { l.shadow.map.dispose(); l.shadow.map = null; }
       l.shadow.mapSize.set(q.shadow || 512, q.shadow || 512);
     });
@@ -183,6 +197,7 @@ export function createView(canvas, tier, model, fpsData, props) {
   const eu = new THREE.Euler();
   let zk = 0, wasRl = false; // zk: 0 = cadera, 1 = apuntando con zoom
   const view = {
+    setZone,
     warn: [], // enemigos que te apuntan: {a: ángulo en pantalla, k: carga 0..1} (lo lee la interfaz)
     scene, camera,
     // rp: progreso de recarga 0..1 (o -1); fx aporta retroceso y temblor.
@@ -206,6 +221,7 @@ export function createView(canvas, tier, model, fpsData, props) {
         gun.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.14, -0.38 + fx.kick * 0.05 + 0.04 * zk);
         gun.rotation.set(fx.kick * 0.22 - rl * 0.8, 0, rl * 0.5);
       }
+      if (zone === 1) roof.sky.position.set(p.x, 0, p.z);
       items.sync(S, time);
       lamps[1].intensity = 380 * (Math.random() < 0.03 ? 0.3 : 1); // lámpara que parpadea
       panels[1].color.setScalar(lamps[1].intensity < 380 ? 0.8 : 4);

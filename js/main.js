@@ -12,7 +12,7 @@ import { initAudio, sfx, music } from './audio.js';
 import { loadSave, writeSave, freshSave } from './save.js';
 import { ui } from './ui.js';
 import { applyUpgrades, renderShop } from './shop.js';
-import { unlocked, evalStars, applyResult, renderLevels } from './progress.js';
+import { unlocked, evalStars, applyResult, renderLevels, levelLabel } from './progress.js';
 
 const { S, on } = core;
 const canvas = document.getElementById('c');
@@ -48,7 +48,7 @@ async function boot() {
   const applyTier = () => { view.setQuality(tier); fx.setQuality(fq[tier] || 1); };
   applyTier(); fx.setBlood(data.blood);
   fx.onTink = (v) => sfx.tink(v);
-  const imp = (pt, s) => { if (!s) return; fx.impact(pt, s.n, s.kind); sfx.imp(s.kind); };
+  const imp = (pt, s) => { if (!s || s.kind === 'sky') return; fx.impact(pt, s.n, s.kind); sfx.imp(s.kind); };
   // Sangre que salpica en la pared/suelo detrás del enemigo, en la dirección del disparo.
   const splatBehind = (pt, dir, size) => {
     if (!dir) return;
@@ -93,7 +93,7 @@ async function boot() {
   on('hurt', (d) => { sfx.hurt(); ui.hurt(); fx.shake = d.head ? 1 : 0.6; if (!d.head) ui.toast('Herido: un tiro más y caes'); });
   on('reload', () => { const r = CFG.weapon.reload; sfx.magOut(r * 0.22); sfx.magIn(r * 0.62); sfx.slide(r * 0.86); });
   on('empty', () => sfx.empty());
-  on('level', (i) => { fx.clear(); ui.banner(LEVELS[i].name.toUpperCase(), 1600); sfx.wave(); });
+  on('level', (i) => { view.setZone(LEVELS[i].zone || 0); fx.clear(); ui.banner(LEVELS[i].name.toUpperCase(), 1600); sfx.wave(); });
   const finish = () => { slowT = 1.1; endTimer = 1.3; setTimeout(() => music.mode('menu'), 1300); };
   on('win', finish);
   on('over', finish);
@@ -114,7 +114,7 @@ async function boot() {
   $('shopBtn').onclick = () => openShop('over');
   $('menuShop').onclick = () => openShop('menu');
   $('shopBack').onclick = () => { ui.hide('shop'); ui.show(shopFrom); syncCont(S.state === 'pause'); };
-  const note = () => 'Nivel ' + (data.level + 1) + ': ' + LEVELS[data.level % LEVELS.length].name;
+  const note = () => levelLabel(data.level % LEVELS.length);
   const begin = (lvl) => {
     try { initAudio(); } catch { /* sin audio */ }
     music.setOn(data.music); music.mode('game');
@@ -133,7 +133,7 @@ async function boot() {
   $('cont').onclick = () => { let i = Math.min(data.level, LEVELS.length - 1); while (i > 0 && !unlocked(data, i)) i--; begin(i); };
   // El botón "Continuar: nivel N" solo aparece si ya superaste algún nivel y no estás en pausa.
   const syncCont = (paused) => {
-    const c = $('cont'); c.textContent = 'Continuar: nivel ' + (data.level + 1);
+    const c = $('cont'); c.textContent = 'Continuar: ' + levelLabel(Math.min(data.level, LEVELS.length - 1));
     c.classList[!paused && data.level > 0 ? 'remove' : 'add']('hide');
     $('lvlBtn').classList[paused ? 'add' : 'remove']('hide');
     $('menuShop').classList[!paused && (data.level > 0 || data.coins > 0) ? 'remove' : 'add']('hide');
@@ -181,8 +181,8 @@ async function boot() {
         data.level = Math.max(data.level, Math.min(S.level + 1, LEVELS.length - 1)); writeSave(data);
         const L = LEVELS[S.level];
         const last = S.level + 1 >= LEVELS.length, nxt = !last && unlocked(data, S.level + 1);
-        ui.result({ title: last ? 'ZONA SUPERADA' : 'NIVEL SUPERADO', got, time: S.t, par: L.par, goal: L.goalText, total: r.total, bonus: r.bonus, chest: r.chest, first: r.first, coins: data.coins,
-          note: !last && !nxt ? 'Siguiente nivel bloqueado: ' + (LEVELS[S.level + 1].boss ? 'necesitas 5 \u2605 en los niveles 1-3' : 'supera este nivel') : '' }, nxt ? 'Siguiente nivel' : 'Repetir nivel');
+        ui.result({ title: L.boss ? 'ZONA SUPERADA' : 'NIVEL SUPERADO', got, time: S.t, par: L.par, goal: L.goalText, total: r.total, bonus: r.bonus, chest: r.chest, first: r.first, coins: data.coins,
+          note: !last && !nxt ? 'Siguiente nivel bloqueado: ' + (LEVELS[S.level + 1].boss ? 'necesitas 5 \u2605 en los niveles de la zona' : 'supera este nivel') : '' }, nxt ? 'Siguiente nivel' : 'Repetir nivel');
         ui.show('shopBtn'); ui.show('lvlOver');
       } else { ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar'); ui.hide('shopBtn'); ui.show('lvlOver'); }
     }
@@ -207,7 +207,7 @@ async function boot() {
     xh.style.setProperty('--g', gap.toFixed(1) + 'px'); xh.classList.toggle('zoom', S.zoom);
     const st = stats();
     view.sync(S, now / 1000, dt, fx, S.reloading ? 1 - S.reloadT / st.reload : -1);
-    if (S.state !== 'menu') ui.hud(S, st, LEVELS[S.level].name);
+    if (S.state !== 'menu') ui.hud(S, st, levelLabel(S.level));
     view.render();
 
     // Calidad adaptable: si la media de FPS baja de 40 durante 2 s, bajar un nivel.

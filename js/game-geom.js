@@ -59,16 +59,16 @@ export function free(x, z, r) {
 }
 
 // Material de un obstáculo: contenedor/estantería/barril = metal, caja = madera, resto (pilares) = hormigón.
-export const matOf = (b) => (b[5] === 'c3' ? 'wood' : b[5] === 'c1' || b[5] === 'shelf' || b[5] === 'barrel' ? 'metal' : 'concrete');
+export const matOf = (b) => (b[5] === 'c3' ? 'wood' : b[5] === 'c1' || b[5] === 'shelf' || b[5] === 'barrel' || b[5] === 'ac' || b[5] === 'vent' ? 'metal' : 'concrete');
 
 // Superficie en un punto de impacto: material y normal aproximada (para elegir el efecto adecuado).
 export function surface(x, y, z) {
   const H = CFG.half;
   let best = { kind: 'floor', n: [0, 1, 0], d: Math.abs(y) };
   const test = (d, kind, n) => { if (d < best.d) best = { kind, n, d }; };
-  test(Math.abs(CFG.height - y), 'concrete', [0, -1, 0]);
-  test(Math.abs(H - x), 'concrete', [-1, 0, 0]); test(Math.abs(x + H), 'concrete', [1, 0, 0]);
-  test(Math.abs(H - z), 'concrete', [0, 0, -1]); test(Math.abs(z + H), 'concrete', [0, 0, 1]);
+  const roof = CFG.zone === 1; // azotea: sin techo y con parapeto de 1,2 m; por encima solo hay cielo
+  if (!roof) test(Math.abs(CFG.height - y), 'concrete', [0, -1, 0]);
+  if (!roof || y < 1.25) { test(Math.abs(H - x), 'concrete', [-1, 0, 0]); test(Math.abs(x + H), 'concrete', [1, 0, 0]); test(Math.abs(H - z), 'concrete', [0, 0, -1]); test(Math.abs(z + H), 'concrete', [0, 0, 1]); }
   for (const b of CFG.crates) {
     const hx = b[2] / 2, hz = b[3] / 2, e = 0.06;
     if (x < b[0] - hx - e || x > b[0] + hx + e || z < b[1] - hz - e || z > b[1] + hz + e || y > b[4] + e) continue;
@@ -77,5 +77,6 @@ export function surface(x, y, z) {
     test(Math.abs(z - (b[1] - hz)), k, [0, 0, -1]); test(Math.abs(z - (b[1] + hz)), k, [0, 0, 1]);
     test(Math.abs(y - b[4]), k, [0, 1, 0]);
   }
+  if (roof && best.d > 0.3) return { kind: 'sky', n: [0, 1, 0], d: 0 }; // disparo al aire: sin impacto
   return best;
 }
