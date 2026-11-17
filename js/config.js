@@ -35,7 +35,7 @@ export const ZONES = [
     [5, -3.5, 2.6, 1.3, 1.4, 'ac'], [-5.5, -2, 2.6, 1.3, 1.4, 'ac'], [12, -9.5, 1.3, 2.6, 1.4, 'ac'], [-12, 3.5, 1.3, 2.6, 1.4, 'ac'],
     [-2, -11, 5, 1.1, 1.3, 'vent'], [-11, -4.5, 1.1, 5, 1.3, 'vent'],
     [0, -6.5, 5, 0.45, 1.2, 'wall'], [-6, 6, 0.45, 4, 1.2, 'wall'], [7, 5, 4, 0.45, 1.2, 'wall'], [3.5, -9.5, 0.45, 3, 1.2, 'wall'],
-    [-2.5, 1.5, 1.5, 1.5, 4, 'chim'], [8, -7.5, 1.5, 1.5, 4, 'chim'],
+    [8, -7.5, 1.5, 1.5, 4, 'chim'],
   ] },
 ];
 export function setZone(z) {
@@ -68,4 +68,6 @@ export const LEVELS = [
     enemies: [{ x: 8, z: -11, helmet: false }, { x: -5.5, z: -8.5, helmet: false, tint: 0x6a7f5a }], aim: 1.2, react: 0.7, acc: 0.27, burst: 0.1, hide: [2.2, 3.8], chest: [13.0, 8.5] },
   { zone: 1, name: 'Ojo en el cielo', par: 40, pay: 400, goal: 'drone', goalText: 'Derriba el dron en 12 s', drones: [{ x: 0, z: -2 }],
     enemies: [{ x: 10.5, z: -10.5, helmet: false, role: 'flank', tint: 0x5a5d62 }], aim: 1.15, react: 0.65, acc: 0.27, burst: 0.1, hide: [2.2, 3.6], chest: [-13, -10] },
+  { zone: 1, name: 'Francotirador', par: 45, pay: 450, goal: 'nodmg', goalText: 'Sin recibir daño', snipeAim: 2.4,
+    enemies: [{ x: 4, z: -12.5, role: 'sniper', tint: 0x4a5a3a }, { x: 8.5, z: -3, role: 'flank', tint: 0x9a8a62 }], aim: 1.1, react: 0.6, acc: 0.27, burst: 0.1, hide: [2.2, 3.6], chest: [-13, 11.5] },
 ];

@@ -259,7 +259,7 @@ export function createView(canvas, tier, model, fpsData, props) {
         if (show) {
           const gp = view.gunPos(i) || [e.x + Math.sin(e.face) * 0.6, 1.5, e.z + Math.cos(e.face) * 0.6];
           const dx = p.x - gp[0], dy = S.eye - gp[1], dz = p.z - gp[2], d = Math.hypot(dx, dy, dz);
-          s.dot.position.set(gp[0], gp[1], gp[2]); s.dot.scale.setScalar(0.4 + 1.6 * e.aimK); // brillo que crece en la boca del arma
+          s.dot.position.set(gp[0], gp[1], gp[2]); s.dot.scale.setScalar((0.4 + 1.6 * e.aimK) * (e.role === 'sniper' ? 2.4 : 1)); // brillo que crece en la boca del arma
           const v = new THREE.Vector3(e.x, 1.4, e.z).applyMatrix4(camera.matrixWorldInverse); // ángulo respecto a donde miras (0 = delante)
           view.warn.push({ a: Math.atan2(v.x, -v.z), k: e.aimK });
         }

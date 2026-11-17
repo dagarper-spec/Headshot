@@ -219,13 +219,14 @@ function pickCover(e) {
   let best = null, bs = 1e9;
   for (const c of SPOTS) {
     const dp = Math.hypot(c.x - p.x, c.z - p.z);
-    if (dp < (tac(e) === 'shield' ? 3 : 5) || dp > 21) continue;
+    if (tac(e) === 'sniper' ? (dp < 10 || dp > 26) : (dp < (tac(e) === 'shield' ? 3 : 5) || dp > 21)) continue; // el francotirador busca coberturas lejanas
     if (!blocked(c.x, 1.25, c.z, p.x, S.eye, p.z)) continue;
     if (S.enemies.some((o) => o !== e && o.active && o.alive && o.goal && Math.hypot(o.goal.x - c.x, o.goal.z - c.z) < 1.5)) continue;
     const de = Math.hypot(c.x - e.x, c.z - e.z), t = tac(e);
     if (t === 'flank' && e.lastCover && Math.hypot(c.x - e.lastCover.x, c.z - e.lastCover.z) < 4.5) continue; // cambia de lado de verdad
     let sc = de + Math.random() * 5 + (de < 1 ? 6 : 0);
     if (t === 'flank') sc = de * 0.4 + Math.random() * 7 + (de < 1 ? 6 : 0);
+    else if (t === 'sniper') sc = de * 0.5 + Math.random() * 6 + (de < 1 ? 6 : 0);
     else if (t === 'shield') sc = dp + Math.random() * 2.5 + (de < 1 ? 4 : 0); // se acerca de cobertura en cobertura
     if (sc < bs) { bs = sc; best = c; }
   }
@@ -235,7 +236,7 @@ function pickCover(e) {
 // Punto desde el que asomarse: el más cercano a la cobertura con visión del jugador.
 function pickPeek(c) {
   const p = S.player, dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz) || 1, tx = -dz / d, tz = dx / d;
-  for (const o of [0, 0.8, -0.8, 1.4, -1.4, 2.1, -2.1]) {
+  for (const o of [0, 0.8, -0.8, 1.4, -1.4, 2.1, -2.1, 3, -3, 4, -4]) {
     const x = c.x + tx * o, z = c.z + tz * o;
     if (free(x, z, 0.35) && !blocked(x, S.eye - 0.05, z, p.x, S.eye, p.z)) return { x, z };
   }
@@ -284,7 +285,7 @@ function updateExplosives(dt) {
 function beginAim(e) {
   const lv = lvl();
   e.state = 'aim'; e.crouch = false; e.moving = false; e.aiming = true;
-  e.aimT = e.aimDur = lv.aim; e.shots = e.boss && e.ph === 3 ? 3 : Math.random() < lv.burst ? 2 : 1; e.lost = 0;
+  e.aimT = e.aimDur = e.role === 'sniper' ? lv.snipeAim || 2.4 : lv.aim; // el francotirador apunta despacio e.shots = e.boss && e.ph === 3 ? 3 : Math.random() < lv.burst ? 2 : 1; e.lost = 0;
 }
 
 function turn(e, target, dt) { // giro suave hacia un ángulo
@@ -352,7 +353,7 @@ function enemyShoot(e) {
   const p = S.player, dx = p.x - e.x, dz = p.z - e.z, dist = Math.hypot(dx, dz);
   const from = [e.x + Math.sin(e.face) * 0.55, 1.5, e.z + Math.cos(e.face) * 0.55];
   const sees = e.sees; // misma visión que usó para decidir disparar
-  const acc = Math.max(0.12, (e.acc + (S.droneSeen ? 0.12 : 0)) * (1 - dist / 45) * (p.speed > 1 ? 0.65 : 1) * (S.crouch ? 0.75 : 1)); // agachado = blanco más pequeño
+  const acc = Math.max(0.12, (e.acc + (S.droneSeen ? 0.12 : 0)) * (1 - dist / 45) * (p.speed > 1 ? (e.role === 'sniper' ? 0.3 : 0.65) : 1) * (S.crouch ? 0.75 : 1)); // agachado = blanco más pequeño
   let end, hit = false, head = false;
   if (sees && Math.random() < acc) { hit = true; head = Math.random() < 0.3; end = [p.x, head ? S.eye : S.eye - 0.5, p.z]; }
   else if (sees) end = [p.x + (Math.random() - 0.5) * 1.4, 0.4 + Math.random() * 1.6, p.z + (Math.random() - 0.5) * 1.4];
@@ -361,12 +362,12 @@ function enemyShoot(e) {
     end = [from[0] + (d[0] / l) * t, from[1] + (d[1] / l) * t, from[2] + (d[2] / l) * t];
   }
   emit('enemyShot', { e, from, end, hit, head, surf: hit ? null : surface(end[0], end[1], end[2]) });
-  if (hit) hurtPlayer(head);
+  if (hit) hurtPlayer(head, e.role === 'sniper' ? 2 : 1);
 }
 
-function hurtPlayer(head) {
+function hurtPlayer(head, dmg = 1) {
   if (!head && S.vest > 0) { S.vest = 0; emit('vestHit'); return; } // el chaleco temporal absorbe un tiro al cuerpo
-  S.st.dmg++; S.hp = head ? 0 : S.hp - 1;
+  S.st.dmg++; S.hp = head ? 0 : S.hp - dmg;
   emit('hurt', { head });
   if (S.hp <= 0) { S.hp = 0; S.state = 'over'; S.deathT = 0; emit('over', { head }); }
 }
