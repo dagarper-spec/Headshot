@@ -10,6 +10,7 @@ export const ui = {
   hud(S, st, name) {
     txt('hpt', '\u25CF'.repeat(S.hp) + '\u25CB'.repeat(S.maxHp - S.hp));
     $('hpf').style.width = (S.hp / S.maxHp) * 100 + '%';
+    $('shf').style.width = (S.vest > 0 ? 100 : 0) + '%';
     txt('wv', 'NIVEL ' + (S.level + 1) + ' \u00B7 ' + name);
     txt('score', mmss(S.t));
     txt('mag', S.reloading ? '--' : S.mag);
@@ -41,6 +42,21 @@ export const ui = {
     $('ot').textContent = title; $('ot').className = win ? 'win' : '';
     $('ostats').innerHTML = stats; $('again').textContent = btn;
     ui.show('over');
+  },
+  // Pantalla de victoria visual: estrellas que aparecen una a una, barras animadas y dinero que sube (estilo "fin de fase").
+  result(r, btn) {
+    const row = (i, lab, val, pct, ok) => `<div class="rrow ${ok ? 'ok' : 'ko'}" style="--d:${0.9 + i * 0.35}s"><span class="rl">${lab}</span><span class="rbar"><i style="--w:${Math.round(pct * 100)}%"></i></span><span class="rv">${val}</span></div>`;
+    const star = (g, i) => `<b class="rs ${g ? 'on' : ''}" style="--d:${0.25 + i * 0.3}s">\u2605</b>`;
+    const sparks = Array.from({ length: 14 }, (_, i) => `<u style="--a:${i * 25.7}deg;--s:${0.9 + (i % 4) * 0.2}s"></u>`).join('');
+    $('ot').textContent = r.title; $('ot').className = 'win';
+    $('ostats').innerHTML = `<div class="res"><div class="rstars">${r.got.map(star).join('')}<div class="sparks">${sparks}</div></div>
+      <div class="rrows">${row(0, 'Nivel superado', '\u2713', 1, true)}${row(1, 'Tiempo', r.time.toFixed(1) + ' s / ' + r.par + ' s', Math.min(1, r.par / Math.max(r.time, 0.1)), r.got[1])}${row(2, r.goal, r.got[2] ? '\u2713' : '\u2717', r.got[2] ? 1 : 0.12, r.got[2])}</div>
+      <div class="rmoney"><div class="rcoin">$<b id="rcount">0</b></div><div class="rdet">${r.bonus ? 'Estrellas +$' + r.bonus + ' ' : ''}${r.chest ? 'Baúl +$' + r.chest + ' ' : ''}${r.first ? '' : '· repetición al 50 %'}</div><div class="rtot">Total $${r.coins}</div></div>
+      ${r.note ? '<div class="rnote">' + r.note + '</div>' : ''}</div>`;
+    $('again').textContent = btn; ui.show('over');
+    const el = $('rcount'), t0 = performance.now(), T = 1100;
+    const tick = (n) => { const k = Math.min(1, (n - t0 - 900) / T); el.textContent = Math.round(r.total * Math.max(0, 1 - Math.pow(1 - Math.max(0, k), 3))); if (k < 1) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
   },
   toast(t) { $('toast').textContent = t; ui.flashClass('toast', 'on', 2200); },
 };

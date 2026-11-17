@@ -26,13 +26,13 @@ export function createMixamoSoldier(model) {
   const root = new THREE.Group(); root.add(body);
 
   // Materiales propios (uno por soldado, para poder iluminar el impacto)
-  const flash = [];
+  const flash = [], fab = [];
   const fabric = () => new THREE.MeshStandardMaterial({ map: TX.camo, bumpMap: TX.camo, bumpScale: 0.8, color: 0xc4c4b4, roughness: 0.92, envMapIntensity: 0.25 });
   const joint = () => new THREE.MeshStandardMaterial({ color: 0x202326, roughness: 0.55, metalness: 0.3 });
   body.traverse((o) => {
     if (!o.isMesh) return;
     o.material = o.name.includes('Joints') ? joint() : fabric();
-    o.castShadow = true; o.frustumCulled = false; flash.push(o.material);
+    o.castShadow = true; o.frustumCulled = false; flash.push(o.material); if (!o.name.includes('Joints')) fab.push(o.material);
   });
   root.updateMatrixWorld(true);
 
@@ -80,7 +80,7 @@ export function createMixamoSoldier(model) {
   let cur = '';
 
   return {
-    root, helmet, flash, gun, muzzle,
+    root, helmet, flash, fab, gun, muzzle,
     // Elige la animación según el estado del enemigo y mezcla con la anterior.
     update(e, dt) {
       const want = !e.alive ? 'death' : e.aiming ? 'aim' : e.moving ? (e.next === 'aim' ? 'walk' : 'run') : e.crouch ? 'hide' : 'idle';

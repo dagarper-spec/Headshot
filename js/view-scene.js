@@ -119,7 +119,7 @@ export function createView(canvas, tier, model, fpsData, props) {
 
   // ---------- Enemigos (un slot visual por cada enemigo del pool) ----------
   const lg = new THREE.CylinderGeometry(0.005, 0.005, 1, 5).rotateX(Math.PI / 2);
-  const slots = [];
+  const slots = [], barG = new THREE.PlaneGeometry(1, 1).translate(0.5, 0, 0);
   for (let i = 0; i < CFG.pool; i++) {
     const g = new THREE.Group(), s = { g, mixer: null, flash: [], cr: 1, aim: 0, mv: 0, ph: i * 2 };
     g.rotation.order = 'YXZ';
@@ -140,6 +140,13 @@ export function createView(canvas, tier, model, fpsData, props) {
       blending: THREE.AdditiveBlending, depthWrite: false }));
     s.dot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 0.4, 0.25) }));
     s.laser.visible = s.dot.visible = false; scene.add(s.laser, s.dot); // destello rojo en la boca del arma
+    // barras de vida (rojo) y armadura (azul) sobre la cabeza: grupo que mira a la cámara, relleno anclado a la izquierda
+    s.bars = new THREE.Group(); s.bars.visible = false; scene.add(s.bars);
+    const bar = (col, y) => { const bg = new THREE.Mesh(barG, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6, depthWrite: false })),
+      f = new THREE.Mesh(barG, new THREE.MeshBasicMaterial({ color: col, depthWrite: false }));
+      bg.scale.set(0.58, 0.085, 1); f.scale.set(0.54, 0.05, 1); bg.position.set(-0.29, y, 0); f.position.set(-0.27, y, 0.001);
+      bg.renderOrder = 998; f.renderOrder = 999; s.bars.add(bg, f); return { bg, f }; };
+    s.bHp = bar(0xe8503a, 0); s.bAr = bar(0x5aa8ff, 0.1); s.tint = -1;
     g.visible = false; scene.add(g); slots.push(s);
   }
 
@@ -205,7 +212,12 @@ export function createView(canvas, tier, model, fpsData, props) {
       slots.forEach((s, i) => {
         const e = S.enemies[i];
         s.g.visible = e.active;
-        if (!e.active) { s.laser.visible = s.dot.visible = false; return; }
+        if (!e.active) { s.laser.visible = s.dot.visible = s.bars.visible = false; return; }
+        if (s.mx && s.tint !== e.tint) { s.tint = e.tint; s.mx.fab.forEach((m) => m.color.setHex(e.tint || 0xc4c4b4)); }
+        { const ar = (e.helmet ? 1 : 0) + (e.shield ? 1 : 0), arMax = e.boss || e.role === 'shield' || e.role === 'grenadier' || e.helmet || e.shield ? 1 : 0;
+          s.bars.visible = e.alive; s.bars.position.set(e.x, 2.12 - 0.45 * s.cr, e.z); s.bars.quaternion.copy(camera.quaternion);
+          s.bHp.f.scale.x = Math.max(0.001, 0.54 * Math.max(0, e.hp) / 2);
+          s.bAr.bg.visible = s.bAr.f.visible = arMax > 0 || e.boss; s.bAr.f.scale.x = Math.max(0.001, 0.54 * ar / Math.max(1, arMax)); }
         s.g.position.set(e.x, 0, e.z); s.g.rotation.y = e.face;
         s.g.rotation.x = e.alive || s.mx ? 0 : -Math.min(1, e.deadT / 0.45) * 1.5; // cae hacia atrás al morir
         s.cr += ((e.crouch && e.alive ? 1 : 0) - s.cr) * k;

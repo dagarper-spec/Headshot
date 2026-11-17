@@ -34,10 +34,10 @@ export function createItems(scene, nGren = 4, nMine = 6) {
   });
   // baúl: caja de madera con herrajes y filo dorado brillante
   const chest = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.5), std(0x5a3d22, 0.9, 0)); base.position.y = 0.2; chest.add(base);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.5), std(0x3b2a1a, 1, 0)); base.position.y = 0.2; chest.add(base);
   const lid = new THREE.Group(); lid.position.set(0, 0.4, -0.25);
-  const lidM = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.16, 0.52), std(0x6b4a2a, 0.9, 0)); lidM.position.set(0, 0.08, 0.25); lid.add(lidM); chest.add(lid);
-  const trimM = new THREE.MeshStandardMaterial({ color: 0xffc94a, emissive: 0xffa800, emissiveIntensity: 1.6, metalness: 0.8, roughness: 0.4 });
+  const lidM = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.16, 0.52), std(0x45311f, 1, 0)); lidM.position.set(0, 0.08, 0.25); lid.add(lidM); chest.add(lid);
+  const trimM = new THREE.MeshStandardMaterial({ color: 0x4a4540, emissive: 0xc87a28, emissiveIntensity: 0.3, metalness: 0.5, roughness: 0.85 });
   for (const x of [-0.3, 0.3]) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.54), trimM); s.position.set(x, 0.21, 0); chest.add(s); }
   const lock = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.04), trimM); lock.position.set(0, 0.36, 0.27); chest.add(lock);
   chest.traverse((o) => { o.castShadow = true; }); chest.visible = false; scene.add(chest);
@@ -58,7 +58,7 @@ export function createItems(scene, nGren = 4, nMine = 6) {
       mines.forEach((m, i) => { const x = S.mines[i]; m.visible = x.on; if (x.on) m.position.set(x.x, 0.035, x.z); });
       const blink = Math.sin(time * 9) > 0 ? 1 : 0.15; ledM.forEach((l) => l.color.setRGB(5 * blink, 0.3 * blink, 0.2 * blink));
       const c = S.chest; chest.visible = !!c;
-      if (c) { chest.position.set(c.x, 0, c.z); lid.rotation.x += ((c.open ? -1.2 : 0) - lid.rotation.x) * 0.15; trimM.emissiveIntensity = c.open ? 0.2 : 1.2 + 0.6 * Math.sin(time * 3); }
+      if (c) { chest.position.set(c.x, 0, c.z); chest.rotation.y = Math.atan2(-c.x, -c.z); lid.rotation.x += ((c.open ? -1.2 : 0) - lid.rotation.x) * 0.15; trimM.emissiveIntensity = c.open ? 0.05 : 0.35 + 0.25 * Math.sin(time * 3); }
       radar.forEach((m, i) => { const e = S.enemies[i], on = S.radarT > 0 && e && e.active && e.alive; m.visible = on; if (on) { m.position.set(e.x, 2.35, e.z); m.rotation.y = time * 3; } });
     },
   };

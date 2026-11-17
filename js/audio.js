@@ -81,17 +81,52 @@ export const sfx = {
   up() { tone(500, 900, 0.15, 'triangle', 0.25); setTimeout(() => tone(750, 1200, 0.2, 'triangle', 0.25), 110); },
 };
 
-// ---- Música de fondo (MP3 en bucle, en streaming). Se baja un momento con cada disparo (ducking). ----
+// ---- Música: MP3 solo en menús/resultados; durante la partida suena una pista procedural calmada (WebAudio). ----
 const song = typeof Audio !== 'undefined' ? new Audio('assets/audio/musica.mp3') : null;
-let musicOn = true, duck = 0;
+let musicOn = true, duck = 0, mode = 'menu';
 const MUSIC_VOL = 0.2;
 if (song) { song.loop = true; song.preload = 'auto'; song.volume = 0; }
+
+// Pista calmada: pad suave + arpegio + bajo, en bucle de 4 acordes (Am F C G), 74 bpm.
+const CALM = { bpm: 74, ch: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], bs: [45, 41, 36, 43], arp: [0, 1, 2, 1, 2, 1, 0, 1] };
+let cg, cTimer = 0, cNext = 0, cStep = 0;
+const mf = (m) => 440 * Math.pow(2, (m - 69) / 12);
+function cnote(m, t, d, type, v, att) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = mf(m);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(cg); g.connect(revIn); o.start(t); o.stop(t + d + 0.05);
+}
+function calmTick() {
+  if (!ac) return;
+  const beat = 60 / CALM.bpm, eighth = beat / 2;
+  while (cNext < ac.currentTime + 0.45) {
+    const bar = Math.floor(cStep / 8) % 4, k = cStep % 8, ch = CALM.ch[bar];
+    if (k === 0) { ch.forEach((n) => cnote(n, cNext, beat * 4.2, 'sine', 0.05, 0.9)); cnote(CALM.bs[bar], cNext, beat * 2, 'sine', 0.12, 0.05); }
+    if (k === 4) cnote(CALM.bs[bar], cNext, beat * 1.6, 'sine', 0.08, 0.05);
+    cnote(ch[CALM.arp[k] % 3] + 12, cNext, beat * 1.5, 'triangle', 0.035, 0.02);
+    cNext += eighth; cStep++;
+  }
+}
+function calmSet(on) {
+  if (!ac) return;
+  if (!cg) { cg = ac.createGain(); cg.gain.value = 0; cg.connect(master); }
+  const t = ac.currentTime;
+  cg.gain.cancelScheduledValues(t); cg.gain.setTargetAtTime(on ? 0.55 : 0, t, 0.6);
+  if (on && !cTimer) { cNext = t + 0.1; cStep = 0; cTimer = setInterval(calmTick, 120); }
+  if (!on && cTimer) { const id = cTimer; cTimer = 0; setTimeout(() => clearInterval(id), 2500); }
+}
+function apply() {
+  const menu = mode === 'menu';
+  if (song) { if (menu && musicOn) song.play().catch(() => {}); else song.pause(); }
+  calmSet(!menu && musicOn);
+}
 export const music = {
-  // Debe llamarse desde un gesto del usuario (móvil): empieza o reanuda la canción.
-  play() { if (song && musicOn) song.play().catch(() => {}); },
-  pause() { if (song) song.pause(); },
-  setOn(v) { musicOn = v; if (!song) return; if (v) this.play(); else song.pause(); },
+  // m = 'menu' (MP3) | 'game' (pista calmada). Llamar desde un gesto del usuario en móvil.
+  mode(m) { mode = m; apply(); },
+  play() { apply(); },
+  pause() { if (song) song.pause(); calmSet(false); },
+  setOn(v) { musicOn = v; apply(); },
   duck() { duck = 1; },
-  // dt en segundos: suaviza el volumen y recupera tras el ducking
   update(dt) { if (!song) return; duck = Math.max(0, duck - dt * 1.6); song.volume = MUSIC_VOL * (1 - 0.55 * duck); },
 };

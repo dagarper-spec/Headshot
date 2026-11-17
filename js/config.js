@@ -38,11 +38,11 @@ export const TIERS = ['low', 'medium', 'high'];
 // acc = precisión base, burst = probabilidad de disparar 2 veces seguidas, hide = [mín, máx] segundos escondido.
 export const LEVELS = [
   { name: 'Primer duelo',   par: 20, pay: 200, goal: 'norel', goalText: 'Sin recargar',
-    enemies: [{ x: -9, z: -11, helmet: false }], aim: 1.3, react: 0.8, acc: 0.25, burst: 0, hide: [2.4, 4.2], chest: [3, 3] },
+    enemies: [{ x: -9, z: -11, helmet: false }], aim: 1.3, react: 0.8, acc: 0.25, burst: 0, hide: [2.4, 4.2], chest: [12.6, -7.5] },
   { name: 'Casco de acero', par: 25, pay: 250, goal: 'head', goalText: 'Acierta un headshot',
-    enemies: [{ x: 9, z: -11, helmet: true, role: 'flank' }], aim: 1.15, react: 0.65, acc: 0.28, burst: 0.1, hide: [2.2, 3.8], chest: [-4, 3.5] },
+    enemies: [{ x: 9, z: -11, helmet: true, role: 'flank', tint: 0x6f86a8 }], aim: 1.15, react: 0.65, acc: 0.28, burst: 0.1, hide: [2.2, 3.8], chest: [-12.7, 4.2] },
   { name: 'Escudo y fuego', par: 35, pay: 300, goal: 'nodmg', goalText: 'Sin recibir daño',
-    enemies: [{ x: -9, z: -11, role: 'shield', shield: true }, { x: 10, z: -10, role: 'grenadier', helmet: true }], aim: 1.15, react: 0.65, acc: 0.28, burst: 0.1, hide: [2.0, 3.5], chest: [0, 6] },
+    enemies: [{ x: -9, z: -11, role: 'shield', shield: true, tint: 0xb07a68 }, { x: 10, z: -10, role: 'grenadier', helmet: true }], aim: 1.15, react: 0.65, acc: 0.28, burst: 0.1, hide: [2.0, 3.5], chest: [12.6, 8] },
   { name: 'El Capataz',     par: 60, pay: 600, goal: 'nodmg', goalText: 'Sin perder ninguna vida', boss: true,
-    enemies: [{ x: 0, z: -11, helmet: true, role: 'flank', boss: true }], aim: 1.0, react: 0.55, acc: 0.3, burst: 0.2, hide: [1.8, 3.2], chest: [-2, 4] },
+    enemies: [{ x: 0, z: -11, helmet: true, role: 'flank', boss: true, tint: 0x5a5d62 }], aim: 1.0, react: 0.55, acc: 0.3, burst: 0.2, hide: [1.8, 3.2], chest: [-12.7, -11.5] },
 ];

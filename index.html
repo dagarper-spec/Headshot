@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0b0d11">
 <title>HEADSHOT — Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <script type="importmap">
 { "imports": {
@@ -18,6 +19,7 @@
 
 <div id="hud" class="hide">
   <div id="hp"><i id="hpf"></i><span id="hpt">100</span></div>
+  <div id="shb"><i id="shf"></i><span>ESCUDO</span></div>
   <div id="wv">OLEADA 1</div>
   <div id="sc"><b id="score">0</b><small id="combo"></small></div>
   <div id="ammo"><b id="mag">30</b><small id="rl"></small></div>
@@ -44,6 +46,7 @@
   <button id="restart" class="big alt hide">Reiniciar nivel</button>
   <button id="lvlBtn" class="big alt">Niveles</button>
   <button id="menuShop" class="big alt hide">Tienda</button>
+  <button id="resetAll" class="big alt small">Reiniciar todo el progreso</button>
   <label class="q">Calidad
     <select id="quality">
       <option value="auto">Auto</option><option value="high">Alta</option>
@@ -60,6 +63,7 @@
 <div id="shop" class="ov hide">
   <h1>TIENDA</h1>
   <div id="coins"></div>
+  <div id="shopTabs"></div>
   <div id="items"></div>
   <button id="shopBack" class="big">Volver</button>
 </div>

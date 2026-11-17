@@ -23,7 +23,7 @@ for (let i = 0; i < CFG.pool; i++) {
   S.enemies.push({ id: i, active: false, alive: false, x: 0, z: 0, hp: 2, helmet: false, crouch: true, state: 'hide',
     next: 'hide', timer: 0, react: 0, aimT: 0, aimK: 0, shots: 0, aiming: false, moving: false, sees: false, hitT: 0,
     face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: 3, sp: 0, r: 0.3, h: 1.38, deadT: 0, acc: 0.4,
-    role: 'rifle', boss: false, shield: false, shieldUp: false, ph: 1, p2: 0, gcd: 3, mineT: 3, lastCover: null });
+    tint: 0, role: 'rifle', boss: false, shield: false, shieldUp: false, ph: 1, p2: 0, gcd: 3, mineT: 3, lastCover: null });
 }
 
 // Puntos de cobertura precalculados: a lo largo del perímetro de cada contenedor/pilar (a 0,7 m de distancia).
@@ -117,7 +117,7 @@ export function startLevel(i) {
     Object.assign(e, { active: true, alive: true, x: d.x, z: d.z, hp: 2, helmet: !!d.helmet, crouch: true, state: 'hide',
       next: 'hide', timer: 1.5 + k * 0.7, react: lv.react, aimT: 0, aimK: 0, shots: 0, aiming: false, moving: false,
       sees: false, hitT: 0, face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: CFG.enemy.speed, deadT: 0, acc: lv.acc,
-      role: d.role || 'rifle', boss: !!d.boss, shield: !!d.shield, shieldUp: !!d.shield, ph: 1, p2: 0, gcd: 3, mineT: 4, lastCover: null });
+      tint: d.tint || 0, role: d.role || 'rifle', boss: !!d.boss, shield: !!d.shield, shieldUp: !!d.shield, ph: 1, p2: 0, gcd: 3, mineT: 4, lastCover: null });
     if (e.role === 'shield') e.spd = CFG.enemy.speed * 0.6;
     retreat(e);
   });

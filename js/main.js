@@ -9,7 +9,7 @@ import { createFx } from './view-fx.js';
 import { rayWorld, surface } from './game-geom.js';
 import { input, initInput, poll, resetCrouch } from './input.js';
 import { initAudio, sfx, music } from './audio.js';
-import { loadSave, writeSave } from './save.js';
+import { loadSave, writeSave, freshSave } from './save.js';
 import { ui } from './ui.js';
 import { applyUpgrades, renderShop } from './shop.js';
 import { unlocked, evalStars, applyResult, renderLevels } from './progress.js';
@@ -94,7 +94,7 @@ async function boot() {
   on('reload', () => { const r = CFG.weapon.reload; sfx.magOut(r * 0.22); sfx.magIn(r * 0.62); sfx.slide(r * 0.86); });
   on('empty', () => sfx.empty());
   on('level', (i) => { fx.clear(); ui.banner(LEVELS[i].name.toUpperCase(), 1600); sfx.wave(); });
-  const finish = () => { slowT = 1.1; endTimer = 1.3; };
+  const finish = () => { slowT = 1.1; endTimer = 1.3; setTimeout(() => music.mode('menu'), 1300); };
   on('win', finish);
   on('over', finish);
 
@@ -106,7 +106,7 @@ async function boot() {
   };
   const bl = $('blood'); bl.value = data.blood; bl.onchange = () => { data.blood = bl.value; writeSave(data); fx.setBlood(data.blood); };
   const mus = $('music'); mus.value = data.music ? '1' : '0'; music.setOn(false); // empieza al pulsar Jugar (gesto del usuario)
-  mus.onchange = () => { data.music = mus.value === '1'; writeSave(data); music.setOn(data.music && S.state !== 'menu'); };
+  mus.onchange = () => { data.music = mus.value === '1'; writeSave(data); music.setOn(data.music); };
   // ----- Tienda -----
   applyUpgrades(data);
   let shopFrom = 'menu';
@@ -117,7 +117,7 @@ async function boot() {
   const note = () => 'Nivel ' + (data.level + 1) + ': ' + LEVELS[data.level % LEVELS.length].name;
   const begin = (lvl) => {
     try { initAudio(); } catch { /* sin audio */ }
-    music.setOn(data.music);
+    music.setOn(data.music); music.mode('game');
     if (!input.touch) canvas.requestPointerLock();
     ui.hide('menu'); ui.hide('over'); ui.show('hud');
     if (input.touch) ui.show('touch');
@@ -148,13 +148,21 @@ async function boot() {
     if (S.state !== 'play') return;
     S.state = 'pause'; input.fire = false; input.zoom = false;
     if (document.pointerLockElement) document.exitPointerLock();
-    ui.menu('PAUSA', 'Continuar', note(), true); syncCont(true);
+    ui.menu('PAUSA', 'Continuar', note(), true); syncCont(true); music.mode('menu');
   };
   $('bPause').onclick = pause;
   $('restart').onclick = () => { S.state = 'menu'; begin(S.level); }; // reinicia el nivel actual
   addEventListener('keydown', (e) => { if (e.code === 'KeyP') pause(); });
   document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && !input.touch) pause(); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); music.pause(); } else music.setOn(data.music && S.state !== 'menu'); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); music.pause(); } else music.setOn(data.music); });
+  // Reiniciar todo: doble pulsación para confirmar (botón temporal de pruebas)
+  let rsT = 0; const ra = $('resetAll');
+  ra.onclick = () => {
+    if (!rsT) { ra.textContent = '¿Seguro? Pulsa otra vez'; rsT = setTimeout(() => { rsT = 0; ra.textContent = 'Reiniciar todo el progreso'; }, 3500); return; }
+    clearTimeout(rsT); rsT = 0; ra.textContent = 'Progreso borrado';
+    for (const k of Object.keys(data)) delete data[k]; Object.assign(data, freshSave()); writeSave(data); applyUpgrades(data); syncCont(false);
+    $('quality').value = data.quality; $('blood').value = data.blood; $('music').value = '1'; fx.setBlood(data.blood); music.setOn(true);
+  };
   ui.menu('HEADSHOT', 'Jugar', ''); syncCont(false);
 
   // ----- Bucle principal con Delta Time -----
@@ -171,11 +179,10 @@ async function boot() {
       if (S.state === 'win') {
         const got = evalStars(S), r = applyResult(data, S.level, got, S.t, S.chestCoins);
         data.level = Math.max(data.level, Math.min(S.level + 1, LEVELS.length - 1)); writeSave(data);
-        const L = LEVELS[S.level], mk = got.map((g) => (g ? '\u2605' : '\u2606')).join('');
+        const L = LEVELS[S.level];
         const last = S.level + 1 >= LEVELS.length, nxt = !last && unlocked(data, S.level + 1);
-        ui.end(true, last ? 'ZONA SUPERADA' : 'NIVEL SUPERADO', '<span class="stars">' + mk + '</span><br>Tiempo <b>' + S.t.toFixed(1) + ' s</b> (par ' + L.par + ' s) · ' + L.goalText + (got[2] ? ' \u2713' : ' \u2717') +
-          '<br>Recompensa <b>+$' + r.total + '</b>' + (r.bonus ? ' (estrellas +$' + r.bonus + ')' : '') + (r.chest ? ' (baúl +$' + r.chest + ')' : '') + (r.first ? '' : ' · repetición al 50 %') + ' · Total <b>$' + data.coins + '</b>' +
-          (!last && !nxt ? '<br>Siguiente nivel bloqueado: ' + (LEVELS[S.level + 1].boss ? 'necesitas 5 \u2605 en los niveles 1-3' : 'supera este nivel') : ''), nxt ? 'Siguiente nivel' : 'Repetir nivel');
+        ui.result({ title: last ? 'ZONA SUPERADA' : 'NIVEL SUPERADO', got, time: S.t, par: L.par, goal: L.goalText, total: r.total, bonus: r.bonus, chest: r.chest, first: r.first, coins: data.coins,
+          note: !last && !nxt ? 'Siguiente nivel bloqueado: ' + (LEVELS[S.level + 1].boss ? 'necesitas 5 \u2605 en los niveles 1-3' : 'supera este nivel') : '' }, nxt ? 'Siguiente nivel' : 'Repetir nivel');
         ui.show('shopBtn'); ui.show('lvlOver');
       } else { ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar'); ui.hide('shopBtn'); ui.show('lvlOver'); }
     }
