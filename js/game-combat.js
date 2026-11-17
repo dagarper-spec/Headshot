@@ -40,7 +40,7 @@ export function aimAssist() {
     const h = rayCyl(e, p.x, S.eye, p.z, dx, dy, dz, 0.5);
     if (h && h.t < wall) return true;
   }
-  for (const d of S.drones) if (d.on && d.alive && raySphere(p.x, S.eye, p.z, dx, dy, dz, d, 0.9) < wall) return true;
+  for (const d of S.drones) if (d.on && d.alive && raySphere(p.x, S.eye, p.z, dx, dy, dz, d, 0.5) < wall) return true;
   return false;
 }
 
