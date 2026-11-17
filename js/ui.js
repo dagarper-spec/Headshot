@@ -51,7 +51,7 @@ export const ui = {
     $('ot').textContent = r.title; $('ot').className = 'win';
     $('ostats').innerHTML = `<div class="res"><div class="rstars">${r.got.map(star).join('')}<div class="sparks">${sparks}</div></div>
       <div class="rrows">${row(0, 'Nivel superado', '\u2713', 1, true)}${row(1, 'Tiempo', r.time.toFixed(1) + ' s / ' + r.par + ' s', Math.min(1, r.par / Math.max(r.time, 0.1)), r.got[1])}${row(2, r.goal, r.got[2] ? '\u2713' : '\u2717', r.got[2] ? 1 : 0.12, r.got[2])}</div>
-      <div class="rmoney"><div class="rcoin">$<b id="rcount">0</b></div><div class="rdet">${r.bonus ? 'Estrellas +$' + r.bonus + ' ' : ''}${r.chest ? 'Baúl +$' + r.chest + ' ' : ''}${r.first ? '' : '· repetición al 50 %'}</div><div class="rtot">Total $${r.coins}</div></div>
+      <div class="rmoney"><div class="rcoin">$<b id="rcount">0</b></div><div class="rdet">${r.bonus ? 'Estrellas +$' + r.bonus + ' ' : ''}${r.chest ? 'Baúl +$' + r.chest + ' ' : ''}${r.first ? '' : '· repetición al 40 %'}</div><div class="rtot">Total $${r.coins}</div></div>
       ${r.note ? '<div class="rnote">' + r.note + '</div>' : ''}</div>`;
     $('again').textContent = btn; ui.show('over');
     const el = $('rcount'), t0 = performance.now(), T = 1100;

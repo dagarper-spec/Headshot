@@ -24,7 +24,7 @@ export function evalStars(S) {
 // Aplica el resultado a la partida guardada y devuelve el desglose del pago.
 export function applyResult(d, level, got, t, chestCoins) {
   const prev = stars(d, level), first = !cleared(d, level);
-  const base = Math.round(reward(level, t) * (first ? 1 : 0.5)), newStars = got.filter((g, k) => g && !prev[k]).length, bonus = 50 * newStars;
+  const base = Math.round(reward(level, t) * (first ? 1 : 0.4)), newStars = got.filter((g, k) => g && !prev[k]).length, bonus = 50 * newStars;
   d.stars[level] = got.map((g, k) => g || prev[k]);
   const total = base + bonus + chestCoins; d.coins += total;
   return { base, bonus, chest: chestCoins, total, first, newStars };
