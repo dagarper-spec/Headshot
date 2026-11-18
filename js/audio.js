@@ -64,7 +64,7 @@ export const sfx = {
   magOut(d = 0) { noise(0.05, 0.35, 5000, 1500, 'bandpass', 0, d); tone(300, 160, 0.07, 'square', 0.1, 0, d); },
   magIn(d = 0) { noise(0.04, 0.45, 4000, 900, 'bandpass', 0, d); tone(210, 90, 0.09, 'square', 0.18, 0, d); tone(1700, 1100, 0.03, 'triangle', 0.1, 0, d); },
   slide(d = 0) { noise(0.09, 0.4, 6000, 1200, 'highpass', 0, d); tone(900, 450, 0.06, 'square', 0.12, 0, d + 0.06); },
-  tink(v = 1) { ring([4200, 6100], 0.18, 0.1 * v); },
+  tink(v = 1) { ring([4200, 6100], 0.18, 0.03 * v); },
   empty() { tone(300, 160, 0.04, 'square', 0.12); noise(0.03, 0.3, 4000, 1500, 'bandpass'); },
   // Impactos de bala en el entorno
   imp(kind) {
@@ -74,7 +74,7 @@ export const sfx = {
   },
   // Explosión (graves + ruido + eco), pitido de granada, cofre, blindaje del jefe y cambio de fase
   boom() { noise(0.7, 1, 2500, 60, 'lowpass', 0.7); tone(90, 28, 0.6, 'sine', 1, 0.4); noise(0.1, 0.8, 8000, 1500, 'highpass', 0.3); },
-  warn(k = 0) { tone(700 + 500 * k, 640 + 460 * k, 0.07, 'sine', 0.1 + 0.08 * k); },
+  warn(k = 0) { tone(150 + 110 * k, 105 + 70 * k, 0.1, 'square', 0.1 + 0.1 * k); noise(0.04, 0.18 + 0.12 * k, 2200, 700, 'bandpass'); } // tic grave de sensor, no pitido,
   beep() { tone(1500, 1500, 0.05, 'square', 0.12); },
   pin() { noise(0.04, 0.3, 6000, 3000, 'highpass'); tone(2400, 1800, 0.05, 'triangle', 0.15, 0, 0.05); },
   chest() { tone(660, 990, 0.12, 'triangle', 0.25); tone(990, 1320, 0.18, 'triangle', 0.25, 0, 0.1); noise(0.12, 0.25, 3000, 800, 'bandpass'); },
@@ -84,45 +84,17 @@ export const sfx = {
   up() { tone(500, 900, 0.15, 'triangle', 0.25); setTimeout(() => tone(750, 1200, 0.2, 'triangle', 0.25), 110); },
 };
 
-// ---- Música: MP3 solo en menús/resultados; durante la partida suena una pista procedural calmada (WebAudio). ----
+// ---- Música: MP3 de menú y MP3 de combate (muy bajito durante la partida). ----
 const song = typeof Audio !== 'undefined' ? new Audio('assets/audio/musica.mp3') : null;
 let musicOn = true, duck = 0, mode = 'menu';
-const MUSIC_VOL = 0.09;
-if (song) { song.loop = true; song.preload = 'auto'; song.volume = 0; }
+const fight = typeof Audio !== 'undefined' ? new Audio('assets/audio/combate.mp3') : null;
+const MUSIC_VOL = 0.09, FIGHT_VOL = 0.05;
+for (const a of [song, fight]) if (a) { a.loop = true; a.preload = 'auto'; a.volume = 0; }
 
-// Pista calmada: pad suave + arpegio + bajo, en bucle de 4 acordes (Am F C G), 74 bpm.
-const CALM = { bpm: 74, ch: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], bs: [45, 41, 36, 43], arp: [0, 1, 2, 1, 2, 1, 0, 1] };
-let cg, cTimer = 0, cNext = 0, cStep = 0;
-const mf = (m) => 440 * Math.pow(2, (m - 69) / 12);
-function cnote(m, t, d, type, v, att) {
-  const o = ac.createOscillator(), g = ac.createGain();
-  o.type = type; o.frequency.value = mf(m);
-  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-  o.connect(g); g.connect(cg); g.connect(revIn); o.start(t); o.stop(t + d + 0.05);
-}
-function calmTick() {
-  if (!ac) return;
-  const beat = 60 / CALM.bpm, eighth = beat / 2;
-  while (cNext < ac.currentTime + 0.45) {
-    const bar = Math.floor(cStep / 8) % 4, k = cStep % 8, ch = CALM.ch[bar];
-    if (k === 0) { ch.forEach((n) => cnote(n, cNext, beat * 4.2, 'sine', 0.05, 0.9)); cnote(CALM.bs[bar], cNext, beat * 2, 'sine', 0.12, 0.05); }
-    if (k === 4) cnote(CALM.bs[bar], cNext, beat * 1.6, 'sine', 0.08, 0.05);
-    cnote(ch[CALM.arp[k] % 3] + 12, cNext, beat * 1.5, 'triangle', 0.035, 0.02);
-    cNext += eighth; cStep++;
-  }
-}
-function calmSet(on) {
-  if (!ac) return;
-  if (!cg) { cg = ac.createGain(); cg.gain.value = 0; cg.connect(master); }
-  const t = ac.currentTime;
-  cg.gain.cancelScheduledValues(t); cg.gain.setTargetAtTime(on ? 0.55 : 0, t, 0.6);
-  if (on && !cTimer) { cNext = t + 0.1; cStep = 0; cTimer = setInterval(calmTick, 120); }
-  if (!on && cTimer) { const id = cTimer; cTimer = 0; setTimeout(() => clearInterval(id), 2500); }
-}
 function apply() {
   const menu = mode === 'menu';
   if (song) { if (menu && musicOn) song.play().catch(() => {}); else song.pause(); }
-  calmSet(!menu && musicOn);
+  if (fight) { if (!menu && musicOn) fight.play().catch(() => {}); else fight.pause(); }
 }
 // Zumbido del dron: rotores con tremolo; vol 0..1 según cercanía (0 = apagado).
 let dh = null;
@@ -140,8 +112,8 @@ export const music = {
   // m = 'menu' (MP3) | 'game' (pista calmada). Llamar desde un gesto del usuario en móvil.
   mode(m) { mode = m; apply(); },
   play() { apply(); },
-  pause() { if (song) song.pause(); calmSet(false); },
+  pause() { if (song) song.pause(); if (fight) fight.pause(); },
   setOn(v) { musicOn = v; apply(); },
   duck() { duck = 1; },
-  update(dt) { if (!song) return; duck = Math.max(0, duck - dt * 1.6); song.volume = MUSIC_VOL * (1 - 0.55 * duck); },
+  update(dt) { duck = Math.max(0, duck - dt * 1.6); if (song) song.volume = MUSIC_VOL * (1 - 0.55 * duck); if (fight) fight.volume = FIGHT_VOL * (1 - 0.55 * duck); },
 };
