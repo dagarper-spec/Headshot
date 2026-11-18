@@ -13,6 +13,7 @@ import { initAudio, sfx, music } from './audio.js';
 import { loadSave, writeSave, freshSave } from './save.js';
 import { ui } from './ui.js';
 import { applyUpgrades, renderShop } from './shop.js';
+import { renderEquip } from './equip.js';
 import { unlocked, evalStars, applyResult, renderLevels, levelLabel } from './progress.js';
 
 const { S, on } = core;
@@ -61,7 +62,7 @@ async function boot() {
     fx.splat([pt[0] + (Math.random() - 0.5) * 0.6, 0.004, pt[2] + (Math.random() - 0.5) * 0.6], [0, 1, 0], size * 1.3); // salpicadura en el suelo
   };
   on('shot', (d) => {
-    CFG.weapon.kind === 'rev' ? sfx.shotRev() : sfx.shot(); music.duck(); view.shot(); fx.shoot(d.end);
+    { const k = CFG.weapon.kind; k === 'rev' ? sfx.shotRev() : k === 'smg' ? sfx.shotSmg() : k === 'sniper' ? sfx.shotSniper() : sfx.shot(); } music.duck(); view.shot(); fx.shoot(d.end);
     if (!d.hit) setTimeout(() => imp(d.end, d.surf), 40);
   });
   on('enemyShot', (d) => {
@@ -103,6 +104,7 @@ async function boot() {
   on('hurt', (d) => { sfx.hurt(); ui.hurt(); fx.shake = d.head ? 1 : 0.6; if (!d.head) ui.toast('Herido: un tiro más y caes'); });
   on('reload', () => { const r = CFG.weapon.reload; sfx.magOut(r * 0.22); sfx.magIn(r * 0.62); sfx.slide(r * 0.86); });
   on('empty', () => sfx.empty());
+  on('helmetSave', () => { sfx.helmet && sfx.helmet(); ui.toast('El casco te ha salvado'); });
   on('level', (i) => { const L = S.custom || LEVELS[i]; spawnDrones(S.droneList || []); view.setZone(L.zone || 0); fx.clear(); ui.banner(L.name.toUpperCase(), 1600); sfx.wave(); });
   const finish = () => { slowT = 1.1; endTimer = 1.3; setTimeout(() => music.mode('menu'), 1300); };
   // Modo infinito: al limpiar la oleada se prepara la siguiente en vez de mostrar resultados.
@@ -119,14 +121,17 @@ async function boot() {
   const mus = $('music'); mus.value = data.music ? '1' : '0'; music.setOn(false); // empieza al pulsar Jugar (gesto del usuario)
   mus.onchange = () => { data.music = mus.value === '1'; writeSave(data); music.setOn(data.music); };
   // ----- Tienda -----
-  applyUpgrades(data);
+  // Carga bajo demanda el modelo del arma equipada (los GLB pesan ~1,3 MB cada uno).
+  const ensureWeapon = async (k) => { if (k && k !== 'pistol' && !view.hasWeapon(k)) { const g = await loadFps(CFG.models.dir, k); if (g) view.addWeapon(k, g); } view.setWeapon(k || 'pistol'); };
+  window.headshot.ensureWeapon = ensureWeapon;
+  applyUpgrades(data); await ensureWeapon(CFG.weapon.kind);
   let shopFrom = 'menu';
   const openShop = (from) => { shopFrom = from; ui.hide(from); renderShop(data, () => writeSave(data)); ui.show('shop'); };
   $('shopBtn').onclick = () => openShop('over');
   $('menuShop').onclick = () => openShop('menu');
   $('shopBack').onclick = () => { ui.hide('shop'); ui.show(shopFrom); syncCont(S.state === 'pause'); };
   const note = () => levelLabel(data.level % LEVELS.length);
-  const begin = (lvl, ez) => { // ez: zona del modo infinito (si se indica)
+  const launch = (lvl, ez) => { // empieza (o reanuda) la partida; ez: zona del modo infinito (si se indica)
     try { initAudio(); } catch { /* sin audio */ }
     S.hasPlan = !!data.items.plano;
     music.setOn(data.music); music.mode('game');
@@ -136,11 +141,22 @@ async function boot() {
     if (S.state === 'pause') S.state = 'play';
     else { // consumables comprados: se gastan al empezar el nivel
       data.cons = data.cons || {};
-      if (data.cons.cMed > 0) { data.cons.cMed--; S.pre.med = true; }
-      if (data.cons.cVest > 0) { data.cons.cVest--; S.pre.vest = true; }
+      data.use = data.use || {};
+      if (data.cons.cMed > 0 && data.use.cMed !== false) { data.cons.cMed--; S.pre.med = true; }
+      if (data.cons.cVest > 0 && data.use.cVest !== false) { data.cons.cVest--; S.pre.vest = true; }
       writeSave(data); resetCrouch(); waveT = 0; ez != null ? core.startEndless(ez) : core.startLevel(lvl);
     }
   };
+  // Pantalla de equipamiento previa a la misión.
+  let eqPlan = null;
+  const begin = (lvl, ez) => {
+    if (S.state === 'pause') return launch(lvl, ez);
+    eqPlan = [lvl, ez]; ui.hide('menu'); ui.hide('over'); ui.hide('levels'); ui.hide('endless');
+    renderEquip(data, async () => { writeSave(data); applyUpgrades(data); await ensureWeapon(CFG.weapon.kind); });
+    ui.show('equip');
+  };
+  $('eqGo').onclick = () => { ui.hide('equip'); launch(...eqPlan); };
+  $('eqBack').onclick = () => { ui.hide('equip'); ui.menu('HEADSHOT', 'Jugar', ''); S.state = 'menu'; syncCont(false); };
   $('start').onclick = () => begin(0); // Jugar: siempre desde el nivel 1 (o continúa si está en pausa)
   $('cont').onclick = () => { let i = Math.min(data.level, LEVELS.length - 1); while (i > 0 && !unlocked(data, i)) i--; begin(i); };
   // El botón "Continuar: nivel N" solo aparece si ya superaste algún nivel y no estás en pausa.
@@ -178,7 +194,7 @@ async function boot() {
     ui.menu('HEADSHOT', 'Jugar', ''); syncCont(false); music.mode('menu');
   };
   $('bPause').onclick = pause;
-  $('restart').onclick = () => { const ez = S.endless ? S.endless.zone : null; S.state = 'menu'; begin(S.level, ez); }; // reinicia el nivel actual
+  $('restart').onclick = () => { const ez = S.endless ? S.endless.zone : null; S.state = 'menu'; launch(S.level, ez); }; // reinicia el nivel actual
   addEventListener('keydown', (e) => { if (e.code === 'KeyP') pause(); });
   document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && !input.touch) pause(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); music.pause(); } else music.setOn(data.music); });
@@ -218,13 +234,13 @@ async function boot() {
         ui.show('shopBtn'); ui.show('lvlOver');
       } else { ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar'); ui.hide('shopBtn'); ui.show('lvlOver'); }
     }
-    S.zoom = input.zoom && S.state === 'play';
+    S.zoom = input.zoom && S.state === 'play'; document.body.classList.toggle('scope', S.zoom && CFG.weapon.kind === 'sniper');
     S.crouch = input.crouch && S.state === 'play';
     if (input.pulse > 0) input.pulse -= raw;
     if (S.state === 'play') {
       poll(dt);
       // ruletas/teclado -> velocidad angular con Delta Time; ayuda al apuntar y zoom reducen la sensibilidad
-      const k = (dt / CFG.player.sens) * (S.zoom ? 0.5 : 1) * (input.touch && aimAssist() ? 0.5 : 1);
+      const k = (dt / CFG.player.sens) * (S.zoom ? 0.5 * CFG.weapon.sens : 1) * (input.touch && aimAssist() ? 0.5 : 1);
       core.look(input.dx - input.turn * 2.4 * k + input.rx * 3.3 * k, input.dy + input.ry * 2.3 * k);
       updateDrones(dt); core.update(dt, input);
       if (input.reload) reload();

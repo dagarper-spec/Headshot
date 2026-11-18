@@ -54,6 +54,16 @@ export const TIERS = ['low', 'medium', 'high'];
 // Niveles: un solo soldado por nivel (el casco aguanta 1 tiro a la cabeza).
 // aim = segundos que apunta antes de disparar (con aviso rojo), react = reacción al verte,
 // acc = precisión base, burst = probabilidad de disparar 2 veces seguidas, hide = [mín, máx] segundos escondido.
+// Armas del jugador: cargador, cadencia (s entre tiros), recarga (s), perfora casco/placa, automática, dispersión (hip / con zoom), vibración.
+export const WEAPONS = {
+  pistol: { name: 'Pistola Eagle', mag: 6, rate: 0.24, reload: 1.5, pierce: false, auto: false, spreadK: 1, zoomK: 0.35, shk: 0.08, shell: true, sens: 1 },
+  rev:    { name: 'Revólver .357', mag: 5, rate: 0.55, reload: 2.4, pierce: true, auto: false, spreadK: 1, zoomK: 0.35, shk: 0.16, shell: false, sens: 1 },
+  smg:    { name: 'Subfusil SMG-9', mag: 18, rate: 0.085, reload: 1.9, pierce: false, auto: true, spreadK: 2.4, zoomK: 0.5, shk: 0.06, shell: true, sens: 1 },
+  sniper: { name: 'Fusil de francotirador', mag: 5, rate: 1.0, reload: 2.8, pierce: true, auto: false, spreadK: 1.8, zoomK: 0.05, shk: 0.14, shell: true, sens: 0.3, sil: true },
+};
+// Cascos: golpes a la cabeza que absorben por misión.
+export const HELMETS = { hLight: { name: 'Casco táctico', hits: 1 }, hHeavy: { name: 'Casco blindado', hits: 2 } };
+
 export const LEVELS = [
   { zone: 0, name: 'Primer duelo',   par: 20, pay: 200, goal: 'norel', goalText: 'Sin recargar',
     enemies: [{ x: -9, z: -11, helmet: false }], aim: 1.3, react: 0.8, acc: 0.25, burst: 0, hide: [2.4, 4.2], chest: [12.6, -7.5] },

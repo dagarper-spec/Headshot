@@ -12,12 +12,11 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { CFG, QUALITY, ZONES } from './config.js';
 import { buildRoof } from './view-roof.js';
 import { createDrones } from './view-drone.js';
-import { buildRevolver } from './view-revolver.js';
 import { createItems, buildShield } from './view-items.js';
 import { makeMaterials, uvs } from './view-textures.js';
 import { buildSoldier, buildViewPistol, poseSoldier } from './view-models.js';
 import { createMixamoSoldier } from './view-mixamo.js';
-import { createFps } from './view-fps.js';
+import { createFps, WDEF } from './view-fps.js';
 import { buildShelf, buildBarrels, buildDecor } from './view-props.js';
 
 const std = (color, rough, metal = 0, extra = {}) =>
@@ -128,14 +127,15 @@ export function createView(canvas, tier, model, fpsData, props) {
   }
 
   // ---------- Arma en primera persona ----------
-  // Pistola externa animada (Desert Eagle + mano enguantada) o, si no hay modelo, la procedural.
-  const fpsv = fpsData ? createFps(fpsData) : null;
-  const gun = fpsv ? fpsv.root : buildViewPistol();
-  const GB = fpsv ? [0.13, -0.2, -0.32] : [0.17, -0.17, -0.38], GZY = fpsv ? -0.1 : -0.12; // posición base y altura al apuntar
-  gun.scale.setScalar(fpsv ? 0.0095 : 0.85);
-  gun.position.set(...GB);
-  camera.add(gun);
-  const rev = buildRevolver(); camera.add(rev); let weapon = 'pistol'; // arma equipada: 'pistol' | 'rev'
+  // Armas cargadas: pistola animada (Desert Eagle + manos), revólver, subfusil y francotirador. Solo está visible la equipada.
+  const WP = {}; let weapon = 'pistol';
+  const addW = (kind, gltf) => {
+    if (WP[kind]) return;
+    const fpsv = gltf ? createFps(gltf, kind) : null, gun = fpsv ? fpsv.root : buildViewPistol(), d = WDEF[kind];
+    gun.name = 'gun_' + kind; gun.scale.setScalar(fpsv ? 0.0095 : 0.85); gun.visible = kind === weapon; camera.add(gun);
+    WP[kind] = { fpsv, gun, GB: fpsv ? d.base : [0.17, -0.17, -0.38], GZY: fpsv ? d.zy : -0.12, k: d.k || 1 };
+  };
+  addW('pistol', fpsData);
 
   // ---------- Enemigos (un slot visual por cada enemigo del pool) ----------
   const lg = new THREE.CylinderGeometry(0.005, 0.005, 1, 5).rotateX(Math.PI / 2);
@@ -206,14 +206,16 @@ export function createView(canvas, tier, model, fpsData, props) {
   let zk = 0, wasRl = false; // zk: 0 = cadera, 1 = apuntando con zoom
   const view = {
     setZone,
-    setWeapon(k) { weapon = k; gun.visible = k !== 'rev'; rev.visible = k === 'rev'; },
+    setWeapon(k) { weapon = WP[k] ? k : 'pistol'; wasRl = false; for (const n in WP) WP[n].gun.visible = n === weapon; },
+    addWeapon(kind, gltf) { addW(kind, gltf); },
+    hasWeapon: (k) => !!WP[k],
     pk: 0, warn: [], // enemigos que te apuntan: {a: ángulo en pantalla, k: carga 0..1} (lo lee la interfaz)
     scene, camera,
     // rp: progreso de recarga 0..1 (o -1); fx aporta retroceso y temblor.
     sync(S, time, dt, fx, rp) {
       const p = S.player, bob = Math.sin(time * 9) * Math.min(p.speed / 5, 1);
       zk += ((S.zoom ? 1 : 0) - zk) * Math.min(1, dt * 12);
-      view.pk = Math.max(0, view.pk - dt * 5); const f = 75 - 33 * zk - view.pk * 9; // pk: golpe de FOV al matar
+      view.pk = Math.max(0, view.pk - dt * 5); const f = 75 - (weapon === 'sniper' ? 58 : 33) * zk - view.pk * 9; // pk: golpe de FOV al matar
       if (Math.abs(camera.fov - f) > 0.05) { camera.fov = f; camera.updateProjectionMatrix(); }
       const hurt = S.hp < S.maxHp, sway = hurt ? 0.0035 : 0.0012; // herido = puntería temblorosa
       const dead = S.state === 'over' ? Math.min(S.deathT, 0.7) : 0;
@@ -222,13 +224,12 @@ export function createView(canvas, tier, model, fpsData, props) {
         p.yaw + Math.cos(time * 1.3) * sway + (Math.random() - 0.5) * fx.shake * 0.03, dead * 0.5, 'YXZ');
       camera.rotation.copy(eu);
       const rl = rp >= 0 ? Math.sin(rp * Math.PI) : 0;
-      if (weapon === 'rev') { // revólver: retroceso más fuerte; el tambor gira al disparar y al recargar
-        rev.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.16, -0.36 + fx.kick * 0.08 + 0.04 * zk);
-        rev.rotation.set(fx.kick * 0.42 - rl * 0.9, 0, rl * 0.5); rev.userData.drum.rotation.z += (fx.kick > 0.5 ? 0.9 : 0) + rl * 0.2;
-      } else if (fpsv) {
+      const w = WP[weapon], { fpsv, gun, GB, GZY } = w;
+      if (fpsv) {
         if (rp >= 0 && !wasRl) fpsv.reload(CFG.weapon.reload); wasRl = rp >= 0; fpsv.update(dt, rp);
-        gun.position.set(GB[0] * (1 - zk) + bob * 0.003, GB[1] + (GZY - GB[1]) * zk + bob * 0.004 - rl * 0.02, GB[2] + fx.kick * 0.05 + 0.03 * zk);
-        gun.rotation.set(fx.kick * 0.18, 0, 0);
+        gun.position.set(GB[0] * (1 - zk) + bob * 0.003, GB[1] + (GZY - GB[1]) * zk + bob * 0.004 - rl * 0.03, GB[2] + fx.kick * 0.05 * w.k + 0.03 * zk);
+        gun.rotation.set(fx.kick * 0.18 * w.k - rl * 0.25, 0, rl * 0.3);
+        if (weapon === 'sniper') gun.visible = zk < 0.55; // con el visor (zoom) se oculta el arma para ver a través de la mira
       } else {
         gun.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.14, -0.38 + fx.kick * 0.05 + 0.04 * zk);
         gun.rotation.set(fx.kick * 0.22 - rl * 0.8, 0, rl * 0.5);
@@ -278,11 +279,11 @@ export function createView(canvas, tier, model, fpsData, props) {
     // Posición en el mundo de la boca del arma del enemigo i (solo con modelo Mixamo).
     gunPos(i) { const m = slots[i].mx; if (!m) return null; const v = m.muzzle.getWorldPosition(new THREE.Vector3()); return [v.x, v.y, v.z]; },
     fire(i) { if (slots[i].mx) slots[i].mx.fire(); },
-    shot() { if (fpsv) fpsv.fire(); }, // retroceso de la corredera del jugador
+    shot() { const f = WP[weapon].fpsv; if (f) f.fire(); }, // retroceso de la corredera del jugador
     get viewH() { return vh; },
     // Boca del arma y ventana de expulsión del jugador en el mundo (para fogonazo y casquillos).
-    muzzle(out) { if (weapon === 'rev') return rev.userData.muzzle.getWorldPosition(out); if (fpsv) return fpsv.muzzle.getWorldPosition(out); return out.set(0.17, -0.12, -0.62).applyMatrix4(camera.matrixWorld); },
-    ejector(out) { if (fpsv) return fpsv.ejector.getWorldPosition(out); return out.set(0.1, -0.1, -0.4).applyMatrix4(camera.matrixWorld); },
+    muzzle(out) { const fpsv = WP[weapon].fpsv; if (fpsv) return fpsv.muzzle.getWorldPosition(out); return out.set(0.17, -0.12, -0.62).applyMatrix4(camera.matrixWorld); },
+    ejector(out) { const fpsv = WP[weapon].fpsv; if (fpsv) return fpsv.ejector.getWorldPosition(out); return out.set(0.1, -0.1, -0.4).applyMatrix4(camera.matrixWorld); },
     render() { if (q.bloom || q.fxaa) composer.render(); else renderer.render(scene, camera); },
     setQuality, resize,
   };

@@ -12,6 +12,7 @@ export const ui = {
     $('hpf').style.width = (S.hp / S.maxHp) * 100 + '%';
     $('shf').style.width = (S.vest > 0 ? 100 : 0) + '%';
     txt('wv', name); $('dalert').classList.toggle('on', !!S.droneSeen);
+    txt('hel', S.helmet > 0 ? 'CASCO ' + '\u25C6'.repeat(S.helmet) : '');
     txt('score', mmss(S.t));
     txt('combo', S.points > 0 || S.endless ? (S.endless ? 'OLEADA ' + S.endless.wave + ' \u00b7 ' : '') + S.points + ' pts' : '');
     const sk = $('streak'), hot = S.combo >= 2 && S.comboT > 0;

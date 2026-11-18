@@ -16,6 +16,8 @@ Necesita servidor (módulos ES): `npx serve` o GitHub Pages. Three.js se carga d
 
 ## Créditos
 - Pistola animada «Heavy pistol animated» (Sketchfab). Autor: [bumstrum](https://sketchfab.com/bumstrum). Licencia: comprobar en la página del modelo.
+- Revólver, subfusil SMG-9 y fusil de francotirador animados (Sketchfab, mismo autor: [bumstrum](https://sketchfab.com/bumstrum)); se usan solo las piezas del arma con texturas reducidas. Licencia: comprobar en las páginas de los modelos.
+- Música de combate «Tactical Chill FPS»: aportada por el autor del juego (revisar condiciones de uso).
 - Soldado y animaciones: Mixamo (Y Bot).
 - La mano enguantada y el antebrazo de primera persona son procedurales (código propio).
 - Música «Tactical Encounter»: creada por el autor del juego con Google Flow Music (condiciones de uso: revisar en la herramienta).

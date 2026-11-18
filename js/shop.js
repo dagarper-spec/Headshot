@@ -1,5 +1,5 @@
 // Economía y tienda: recompensa por tiempo y mejoras permanentes (guardadas en localStorage).
-import { CFG, LEVELS } from './config.js';
+import { CFG, LEVELS, WEAPONS, HELMETS } from './config.js';
 import { setGlove, setSkin } from './view-fps.js';
 import { COS } from './cosmetics.js';
 
@@ -18,6 +18,10 @@ export const ITEMS = [
   { id: 'gGold',  kind: 'glove', name: 'Guantes dorados', desc: ['Cosmético'], price: 700, color: 0xb8902a },
   // Pistola: acabados (mat = color, metal, rugosidad) y color del fogonazo (rgb HDR + luz)
   { id: 'rev', kind: 'weapon', name: 'Revólver .357', desc: ['5 balas · perfora casco y placas'], price: 600, needPlan: true },
+  { id: 'smg', kind: 'weapon', name: 'Subfusil SMG-9', desc: ['18 balas · disparo automático'], price: 1500 },
+  { id: 'sniper', kind: 'weapon', name: 'Fusil francotirador', desc: ['Zoom ×4 · silenciado · perfora'], price: 2000 },
+  { id: 'hLight', kind: 'helmet', name: 'Casco táctico', desc: ['Absorbe 1 tiro a la cabeza por misión'], price: 900 },
+  { id: 'hHeavy', kind: 'helmet', name: 'Casco blindado', desc: ['Absorbe 2 tiros a la cabeza por misión'], price: 1900 },
   { id: 'sMatte',  kind: 'skin', name: 'Negra mate',      desc: ['Acabado sin brillo'], price: 300, color: 0x15171a, metal: 0.25, rough: 0.85 },
   { id: 'sBronze', kind: 'skin', name: 'Bronce envejecido', desc: ['Metal viejo y gastado'], price: 450, color: 0x9a7440, metal: 0.85, rough: 0.5 },
   { id: 'sChrome', kind: 'skin', name: 'Cromada',         desc: ['Brillo de espejo'], price: 650, color: 0xe6ebf0, metal: 1, rough: 0.1 },
@@ -35,12 +39,11 @@ export function reward(level, t) {
 // Aplica las mejoras compradas a la configuración del juego.
 export function applyUpgrades(d) {
   const lv = (id) => +d.items[id] || 0;
-  const rev = d.weapon === 'rev' && d.items.rev; // revólver .357: 5 balas, cadencia lenta, recarga lenta; perfora casco y placas
-  CFG.weapon.kind = rev ? 'rev' : 'pistol'; COS.rev = !!rev;
-  CFG.weapon.mag = (rev ? 5 : BASE.mag) + lv('mag');
-  CFG.weapon.rate = rev ? 0.55 : BASE.rate;
-  CFG.weapon.reload = (rev ? 2.4 : BASE.reload) * (1 - 0.15 * lv('fast'));
-  window.headshot && window.headshot.view && window.headshot.view.setWeapon(CFG.weapon.kind);
+  const wk = d.weapon && d.items[d.weapon] && WEAPONS[d.weapon] ? d.weapon : 'pistol', W = WEAPONS[wk]; // arma equipada
+  Object.assign(CFG.weapon, { kind: wk, mag: W.mag + lv('mag'), rate: W.rate, reload: W.reload * (1 - 0.15 * lv('fast')), pierce: W.pierce, auto: W.auto, spreadK: W.spreadK, zoomK: W.zoomK, sens: W.sens, sil: !!W.sil });
+  COS.rev = !W.shell; COS.shk = W.shk;
+  window.headshot && window.headshot.view && window.headshot.view.setWeapon(wk);
+  const h = HELMETS[d.helmet]; CFG.player.helmet = h && d.items[d.helmet] ? h.hits : 0;
   CFG.weapon.stab = 1 - [0, 0.2, 0.35][lv('stab')];
   CFG.player.hp = BASE.hp + (lv('vest') ? 1 : 0);
   const g = ITEMS.find((i) => i.id === d.glove); setGlove(g ? g.color : 0);
@@ -62,7 +65,10 @@ ICON.skin = (c) => `<path d="M6 24h38l4-6h10v10h-8l-3 4H34l-2 14H20l2-14H6z" fil
 ICON.rev = () => '<circle cx="30" cy="26" r="10" fill="#3a4048" stroke="#aab4c0" stroke-width="2.5"/><path d="M38 22h20v8H38z" fill="#23272d" stroke="#aab4c0" stroke-width="2"/><path d="M24 34l-8 22h12l4-18z" fill="#6a4426" stroke="#0009" stroke-width="2"/><circle cx="30" cy="26" r="3" fill="#111"/>';
 ICON.flash = (c) => `<g fill="${c}"><path d="M32 6l5 17 17-5-12 13 14 10-18 1 3 18-9-15-11 14 2-18-17-3 14-10-10-14 16 6z"/></g><circle cx="32" cy="32" r="6" fill="#fff"/>`;
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
-const TABS = [['up', 'Mejoras'], ['cons', 'Consumibles'], ['glove', 'Guantes'], ['gun', 'Arma']];
+const TABS = [['up', 'Mejoras'], ['cons', 'Consumibles'], ['weapon', 'Armas'], ['helmet', 'Cascos'], ['glove', 'Guantes'], ['gun', 'Aspecto']];
+// Imágenes renderizadas de los objetos (assets/img/<id>.png); las que faltan usan el icono vectorial.
+export const IMGS = new Set(['pistol', 'rev', 'smg', 'sniper', 'hLight', 'hHeavy', 'sMatte', 'sBronze', 'sChrome', 'fBlue', 'fGreen', 'fRed', 'gRed', 'gCamo', 'gGold']);
+export const itemImg = (id) => IMGS.has(id) ? `<img src="assets/img/${id}.png" alt="" draggable="false">` : '';
 let tab = 'up';
 
 // Pinta la tienda como cuadrícula de tarjetas con imagen. save() guarda los cambios.
@@ -73,7 +79,7 @@ export function renderShop(d, save) {
   for (const [k, n] of TABS) { const b = document.createElement('button'); b.className = 'tab' + (k === tab ? ' on' : ''); b.textContent = n; b.onclick = () => { tab = k; renderShop(d, save); }; tabs.appendChild(b); }
   const box = document.getElementById('items'); box.innerHTML = '';
   const bossDone = !!(d.stars && d.stars[3]);
-  for (const it of ITEMS.filter((i) => (tab === 'gun' ? i.kind === 'skin' || i.kind === 'flash' || i.kind === 'weapon' : i.kind === tab))) {
+  for (const it of ITEMS.filter((i) => (tab === 'gun' ? i.kind === 'skin' || i.kind === 'flash' : i.kind === tab))) {
     const el = document.createElement('button'); let title = it.name, desc, st, canBuy = false, buy = null, pips = '', cls = 'item';
     if (it.kind === 'up') {
       const lv = +d.items[it.id] || 0, max = it.prices.length, price = it.prices[lv];
@@ -83,19 +89,19 @@ export function renderShop(d, save) {
     } else if (it.kind === 'cons') {
       const n = d.cons[it.id] || 0; desc = it.desc[0]; pips = n ? `<div class="have">Tienes ${n}</div>` : '';
       st = n >= 3 ? 'Máximo' : '$ ' + it.price; canBuy = d.coins >= it.price && n < 3; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.cons[it.id] = n + 1; };
-    } else if (it.kind === 'weapon') { // el revólver necesita el plano del baúl dorado; se alterna con la pistola
-      const own = !!d.items[it.id], eq = d.weapon === it.id; desc = it.desc[0];
-      if (!d.items.plano && !own) { st = 'Falta el plano'; cls += ' no'; desc = 'Busca el baúl dorado oculto en el almacén'; }
-      else if (own) { st = eq ? 'Equipado' : 'Equipar'; cls += eq ? ' own eq' : ' own'; canBuy = true; buy = () => { d.weapon = eq ? '' : it.id; }; }
-      else { st = '$ ' + it.price; canBuy = d.coins >= it.price; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.items[it.id] = 1; d.weapon = it.id; }; }
+    } else if (it.kind === 'weapon' || it.kind === 'helmet') { // se compran aquí y se equipan en la pantalla de equipamiento
+      const own = !!d.items[it.id]; desc = it.desc[0];
+      if (it.needPlan && !d.items.plano && !own) { st = 'Falta el plano'; cls += ' no'; desc = 'Busca el baúl dorado oculto en el almacén'; }
+      else if (own) { st = 'En tu arsenal'; cls += ' own'; }
+      else { st = '$ ' + it.price; canBuy = d.coins >= it.price; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.items[it.id] = 1; if (it.kind === 'weapon') d.weapon = it.id; else d.helmet = it.id; }; }
     } else {
       const slot = it.kind === 'glove' ? 'glove' : it.kind, own = !!d.items[it.id], eq = d[slot] === it.id; desc = it.desc[0];
       if (own) { st = eq ? 'Equipado' : 'Equipar'; cls += eq ? ' own eq' : ' own'; canBuy = true; buy = () => { d[slot] = eq ? '' : it.id; }; }
       else { st = '$ ' + it.price; canBuy = d.coins >= it.price; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.items[it.id] = 1; d[slot] = it.id; }; }
     }
-    const ic = it.kind === 'glove' ? ICON.glove(hex(it.color)) : it.kind === 'weapon' ? ICON.rev() : it.kind === 'skin' ? ICON.skin(hex(it.color)) : it.kind === 'flash' ? ICON.flash(hex(it.color)) : ICON[it.id]();
+    const ic = IMGS.has(it.id) ? '' : it.kind === 'glove' ? ICON.glove(hex(it.color)) : it.kind === 'skin' ? ICON.skin(hex(it.color)) : it.kind === 'flash' ? ICON.flash(hex(it.color)) : ICON[it.id]();
     el.className = cls;
-    el.innerHTML = `<div class="pic"><svg viewBox="0 0 64 64">${ic}</svg></div><b>${title}</b><span>${desc}</span>${pips}<em>${st}</em>`;
+    el.innerHTML = `<div class="pic${IMGS.has(it.id) ? ' img' : ''}">${IMGS.has(it.id) ? itemImg(it.id) : `<svg viewBox="0 0 64 64">${ic}</svg>`}</div><b>${title}</b><span>${desc}</span>${pips}<em>${st}</em>`;
     el.onclick = () => { if (!canBuy || !buy) return; buy(); save(); applyUpgrades(d); renderShop(d, save); };
     box.appendChild(el);
   }

@@ -20,7 +20,7 @@ export function updateCombat(dt, fireHeld) {
   if (S.reloading) {
     S.reloadT -= dt;
     if (S.reloadT <= 0) { S.reloading = false; S.mag = maxMag(); }
-  } else if (fireHeld && !S.latch && S.fireT <= 0) {
+  } else if (fireHeld && (!S.latch || CFG.weapon.auto) && S.fireT <= 0) {
     S.latch = true;
     if (S.mag > 0) shoot(); else { S.fireT = 0.3; emit('empty'); reload(); }
   }
@@ -45,7 +45,7 @@ export function aimAssist() {
 }
 
 // Dispersión actual (radianes aprox.): sube al moverte o estar herido; baja al apuntar con zoom. La usa también la retícula.
-export const spread = () => (0.002 + Math.min(S.player.speed / 5, 1) * 0.012 + (S.hp < S.maxHp ? 0.008 : 0)) * (S.zoom ? 0.35 : 1) * (S.crouch ? 0.7 : 1) * (CFG.weapon.stab || 1);
+export const spread = () => (0.002 + Math.min(S.player.speed / 5, 1) * 0.012 + (S.hp < S.maxHp ? 0.008 : 0)) * (S.zoom ? CFG.weapon.zoomK : CFG.weapon.spreadK) * (S.crouch ? 0.7 : 1) * (CFG.weapon.stab || 1);
 
 function shoot() {
   const p = S.player;

@@ -126,7 +126,7 @@ export function createFx(scene, camera, view) {
     t.position.copy(tmp).lerp(tmp2, 0.5); t.scale.z = tmp.distanceTo(tmp2); t.lookAt(tmp2);
     t.userData.life = 0.07; t.visible = true;
     mz.copy(tmp2).sub(tmp).normalize(); fx.muzzle(tmp, mz, !from);
-    if (!from) { fx.kick = 1; fx.flashT = 0.05; fx.shake = Math.max(fx.shake, COS.rev ? 0.16 : 0.08); if (!COS.rev) eject(); }
+    if (!from) { fx.kick = 1; fx.flashT = 0.05; fx.shake = Math.max(fx.shake, COS.shk || 0.08); if (!COS.rev) eject(); }
   };
 
   // Impacto en una superficie: kind = 'concrete' | 'metal' | 'wood' | 'floor'; n = normal.

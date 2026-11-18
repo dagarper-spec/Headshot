@@ -5,9 +5,27 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { rb, put } from './view-models.js';
 
-export async function loadFps(dir) {
-  try { return await new GLTFLoader().loadAsync(dir + 'pistol.glb'); } // null => el juego usa la pistola procedural
-  catch (e) { console.info('[fps] sin pistola externa: ' + (e.message || e)); return null; }
+// Definición de cada arma (cm, +Z hacia delante): boca, expulsión, posición de la mano derecha (r),
+// mano izquierda fija en el guardamanos (hold) y colocación en cámara (base, zy = altura al apuntar).
+export const WDEF = {
+  pistol: { file: 'pistol.glb', muzzle: [0, 6.0, 26.5], ejector: [-2.4, 8.4, 3.0], r: [0, 0, 0], base: [0.13, -0.2, -0.32], zy: -0.1 },
+  rev:    { file: 'revolver.glb', muzzle: [0, 6.5, 33], ejector: [0, 4, 6], r: [1.5, 0.6, 3.6], base: [0.13, -0.2, -0.3], zy: -0.1 },
+  smg:    { file: 'smg.glb', muzzle: [0, 5.2, 38.6], ejector: [-1.6, 9, 14], r: [1.5, 0.2, 4.5], hold: [0, -3, 27], base: [0.13, -0.21, -0.3], zy: -0.11 },
+  sniper: { file: 'sniper.glb', muzzle: [0, 7.6, 107.7], ejector: [-2.5, 8, 12], r: [1.5, 0.4, 2.5], hold: [0, -9.5, 40], base: [0.13, -0.19, -0.2], zy: -0.115 },
+};
+export async function loadFps(dir, kind = 'pistol') {
+  try { return await new GLTFLoader().loadAsync(dir + WDEF[kind].file); } // null => el juego usa la pistola procedural
+  catch (e) { console.info('[fps] sin modelo ' + kind + ': ' + (e.message || e)); return null; }
+}
+
+// Animaciones propias de las armas nuevas (el modelo solo trae las piezas): corredera/cerrojo al disparar y cargador al recargar.
+function makeClips(root, kind) {
+  const T = (n, key, t, v) => { const o = root.getObjectByName(n); return o ? new THREE.VectorKeyframeTrack(n + '.position', t, v.flatMap((d) => [o.position.x, o.position.y + (key === 'y' ? d : 0), o.position.z + (key === 'z' ? d : 0)])) : null; };
+  const fire = [], reload = [];
+  if (kind === 'smg') { fire.push(T('bolt', 'z', [0, 0.03, 0.09], [0, -4.5, 0])); reload.push(T('clip', 'y', [0, 0.3, 0.45, 0.62, 1], [0, -22, -22, -2, 0]), T('bolt', 'z', [0, 0.7, 0.82, 1], [0, 0, -4.5, 0])); }
+  if (kind === 'sniper') { reload.push(T('clip', 'y', [0, 0.25, 0.45, 0.6, 0.7], [0, -9, -9, -1, 0]), T('bolt', 'z', [0, 0.72, 0.84, 1], [0, 0, -7, 0]), T('boltrear', 'z', [0, 0.72, 0.84, 1], [0, 0, -7, 0])); fire.push(T('bolt', 'z', [0, 0.35, 0.5, 0.65], [0, 0, -7, 0]), T('boltrear', 'z', [0, 0.35, 0.5, 0.65], [0, 0, -7, 0])); }
+  const mk = (n, d, tr) => { tr = tr.filter(Boolean); return tr.length ? new THREE.AnimationClip(n, d, tr) : null; };
+  return [mk('fire', kind === 'sniper' ? 0.65 : 0.09, fire), mk('reload', 1, reload)].filter(Boolean);
 }
 
 // Relieve de tela/cuero generado en un canvas (para que el guante no se vea liso).
@@ -82,16 +100,17 @@ function buildLeftHand() {
 
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-const GUN = [];
-export function createFps(gltf) {
+const GUN = []; // mallas de todas las armas cargadas (para cambiar su acabado)
+export function createFps(gltf, kind = 'pistol') {
+  const def = WDEF[kind];
   const vm = new THREE.Group(), rig = new THREE.Group(), outer = new THREE.Group(); // outer: el juego mueve/inclina este grupo
   vm.add(rig); vm.rotation.y = Math.PI; outer.add(vm);
-  const root = gltf.scene; rig.add(root); GUN.length = 0;
+  const root = gltf.scene; rig.add(root);
   const talon = root.getObjectByName('Talon');
-  const rh = buildRightHand(); rh.userData.hand = true; talon.add(rh); // la mano derecha sigue a la pistola
+  const rh = buildRightHand(); rh.userData.hand = true; rh.position.set(...def.r); talon.add(rh); // la mano derecha sigue al arma
   // Puntos de referencia: boca del cañón y ventana de expulsión (para fogonazo y casquillos)
-  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 6.0, 26.5); talon.add(muzzle);
-  const ejector = new THREE.Object3D(); ejector.position.set(-2.4, 8.4, 3.0); talon.add(ejector);
+  const muzzle = new THREE.Object3D(); muzzle.position.set(...def.muzzle); talon.add(muzzle);
+  const ejector = new THREE.Object3D(); ejector.position.set(...def.ejector); talon.add(ejector);
 
   // Mano izquierda (solo visible al recargar)
   const left = buildLeftHand(); left.userData.hand = true; left.visible = false; rig.add(left);
@@ -110,7 +129,8 @@ export function createFps(gltf) {
   root.traverse((o) => { if (!o.isMesh) return; let a = o, hand = false; while (a) { if (a.userData.hand) hand = true; a = a.parent; } if (!hand) { o.userData.orig = o.material; GUN.push(o); } });
 
   const mixer = new THREE.AnimationMixer(root), act = {};
-  for (const c of gltf.animations) { const a = mixer.clipAction(c); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = false; act[c.name] = a; }
+  const clips = kind === 'pistol' ? gltf.animations : makeClips(root, kind);
+  for (const c of clips) { const a = mixer.clipAction(c); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = false; act[c.name] = a; }
 
   return {
     root: outer, rig, talon, mixer, muzzle, ejector,
@@ -121,12 +141,12 @@ export function createFps(gltf) {
     update(dt, rp = -1) {
       mixer.update(dt);
       const w = rp >= 0 ? sstep(0, 0.16, rp) * (1 - sstep(0.66, 0.86, rp)) : 0;
-      left.visible = w > 0.01;
-      if (left.visible && clipMesh && clipLP) {
+      left.visible = w > 0.01 || !!def.hold; if (def.hold && w <= 0.01) left.position.set(...def.hold);
+      if (w > 0.01 && clipMesh && clipLP) {
         rig.updateMatrixWorld(true);
         tmpV.copy(clipLP); clipMesh.localToWorld(tmpV); rig.worldToLocal(tmpV);
         tgt.copy(tmpV).add(new THREE.Vector3(0, -0.4, 0.2));
-        left.position.lerpVectors(LREST, tgt, w);
+        left.position.lerpVectors(def.hold ? tmpV.set(...def.hold) : LREST, tgt, w);
         left.rotation.set(0, 0, (1 - w) * 0.35); // llega algo girada
       }
     },

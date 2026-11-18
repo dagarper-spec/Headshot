@@ -17,7 +17,7 @@ export const S = {
   gren: [], mines: [],            // pools de granadas y minas
   st: { reloads: 0, headHits: 0, dmg: 0 }, // estadísticas del intento (para las estrellas)
   combo: 0, comboT: 0, bestCombo: 0, points: 0, kills: 0, custom: null, endless: null,
-  vest: 0, magBonus: 0, radarT: 0, chest: null, chestCoins: 0, pre: { vest: false, med: false },
+  helmet: 0, vest: 0, magBonus: 0, radarT: 0, chest: null, chestCoins: 0, pre: { vest: false, med: false },
 };
 for (let i = 0; i < 4; i++) S.gren.push({ on: false, x: 0, z: 0, sx: 0, sz: 0, t: 0, T: 1, y: 1.6 });
 for (let i = 0; i < 6; i++) S.mines.push({ on: false, x: 0, z: 0, arm: 0 });
@@ -123,6 +123,7 @@ export function startLevel(i, custom, keep) {
   Object.assign(S, { t: 0, grace: 3, deathT: 0, hp: CFG.player.hp, maxHp: CFG.player.hp, mag: CFG.weapon.mag,
     reloading: false, fireT: 0, latch: false, zoom: false, crouch: false, eye: CFG.eye, state: 'play' });
   Object.assign(S.player, { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 });
+  if (!keep) S.helmet = CFG.player.helmet || 0;
   if (!keep) { S.combo = S.comboT = S.bestCombo = S.points = S.kills = 0; }
   S.st = { reloads: 0, headHits: 0, dmg: 0, droneT: 0 }; S.vest = S.pre.vest ? 1 : 0; S.magBonus = 0; S.radarT = 0; S.chestCoins = 0;
   if (S.pre.med) { S.maxHp++; S.hp++; }
@@ -385,6 +386,7 @@ function enemyShoot(e) {
 }
 
 function hurtPlayer(head, dmg = 1) {
+  if (head && S.helmet > 0) { S.helmet--; S.combo = 0; S.comboT = 0; emit('helmetSave'); return; } // el casco absorbe un tiro a la cabeza
   if (!head && S.vest > 0) { S.vest = 0; emit('vestHit'); return; } // el chaleco temporal absorbe un tiro al cuerpo
   S.st.dmg++; S.combo = 0; S.comboT = 0; S.hp = head ? 0 : S.hp - dmg;
   emit('hurt', { head });
@@ -418,9 +420,9 @@ export function damageEnemy(e, head, pt, dir) {
     retreat(e); return;
   }
   if (head) {
-    if (e.helmet && CFG.weapon.kind !== 'rev') { e.helmet = false; emit('helmet', { e, pt, dir }); retreat(e); return; } // el .357 atraviesa el casco
+    if (e.helmet && !CFG.weapon.pierce) { e.helmet = false; emit('helmet', { e, pt, dir }); retreat(e); return; } // el .357 atraviesa el casco
     e.hp = 0;
-  } else if (e.vest && CFG.weapon.kind !== 'rev') { e.vest = false; emit('armor', { e, pt, dir, vest: true }); retreat(e); return; } // la placa absorbe el primer tiro al cuerpo
+  } else if (e.vest && !CFG.weapon.pierce) { e.vest = false; emit('armor', { e, pt, dir, vest: true }); retreat(e); return; } // la placa absorbe el primer tiro al cuerpo
   else e.hp -= 1;
   if (e.hp > 0) { e.acc *= 0.7; emit('hit', { e, head, pt, dir }); retreat(e); return; }
   e.alive = false; e.aiming = false; e.moving = false; e.deadT = 0;
