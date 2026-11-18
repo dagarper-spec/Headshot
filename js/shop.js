@@ -17,7 +17,7 @@ export const ITEMS = [
   { id: 'gCamo',  kind: 'glove', name: 'Guantes camuflaje', desc: ['Cosmético'], price: 400, color: 0x4b5a35 },
   { id: 'gGold',  kind: 'glove', name: 'Guantes dorados', desc: ['Cosmético'], price: 700, color: 0xb8902a },
   // Pistola: acabados (mat = color, metal, rugosidad) y color del fogonazo (rgb HDR + luz)
-  { id: 'rev', kind: 'weapon', name: 'Revólver .357', desc: ['5 balas · perfora casco y placas'], price: 600, needPlan: true },
+  { id: 'rev', kind: 'weapon', name: 'Revólver .357', desc: ['6 balas · perfora casco y placas'], price: 600, needPlan: true },
   { id: 'smg', kind: 'weapon', name: 'Subfusil SMG-9', desc: ['18 balas · disparo automático'], price: 1500 },
   { id: 'sniper', kind: 'weapon', name: 'Fusil francotirador', desc: ['Zoom ×4 · silenciado · perfora'], price: 2000 },
   { id: 'hLight', kind: 'helmet', name: 'Casco táctico', desc: ['Absorbe 1 tiro a la cabeza por misión'], price: 900 },

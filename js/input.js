@@ -1,5 +1,5 @@
 // Entrada unificada: teclado + ratón (pointer lock) en escritorio, joystick + arrastre táctil en móvil.
-export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false, zoom: false, crouch: false, pulse: 0 };
+export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false, zoom: false, crouch: false, pulse: 0, rHeld: () => false };
 
 const keys = {};
 const pads = { L: { id: -1, x: 0, y: 0, el: null }, R: { id: -1, x: 0, y: 0, el: null } }; // ruletas táctiles
@@ -51,7 +51,9 @@ export function initInput(canvas) {
     p.x = dx; p.y = dy;
     p.el.firstElementChild.style.transform = `translate(${dx * r.width * 0.3}px,${dy * r.width * 0.3}px)`;
   };
-  const reset = (p) => { p.id = -1; p.x = p.y = 0; p.el.firstElementChild.style.transform = 'translate(0,0)'; };
+  // Mantener el dedo quieto en la ruleta derecha dispara en continuo (armas automáticas); sigue disparando aunque luego apuntes.
+  input.rHeld = () => { const p = pads.R; if (p.id < 0) return false; if (!p.fireOn && p.mv < 0.6 && performance.now() - p.t0 > 150) p.fireOn = true; return !!p.fireOn; };
+  const reset = (p) => { p.fireOn = false; p.id = -1; p.x = p.y = 0; p.el.firstElementChild.style.transform = 'translate(0,0)'; };
   for (const p of [pads.L, pads.R]) {
     p.el.addEventListener('touchstart', (e) => {
       e.preventDefault();

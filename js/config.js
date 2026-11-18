@@ -57,7 +57,7 @@ export const TIERS = ['low', 'medium', 'high'];
 // Armas del jugador: cargador, cadencia (s entre tiros), recarga (s), perfora casco/placa, automática, dispersión (hip / con zoom), vibración.
 export const WEAPONS = {
   pistol: { name: 'Pistola Eagle', mag: 6, rate: 0.24, reload: 1.5, pierce: false, auto: false, spreadK: 1, zoomK: 0.35, shk: 0.08, shell: true, sens: 1 },
-  rev:    { name: 'Revólver .357', mag: 5, rate: 0.55, reload: 2.4, pierce: true, auto: false, spreadK: 1, zoomK: 0.35, shk: 0.16, shell: false, sens: 1 },
+  rev:    { name: 'Revólver .357', mag: 6, rate: 0.34, reload: 1.7, pierce: true, auto: false, spreadK: 1, zoomK: 0.35, shk: 0.16, shell: false, sens: 1 },
   smg:    { name: 'Subfusil SMG-9', mag: 18, rate: 0.085, reload: 1.9, pierce: false, auto: true, spreadK: 2.4, zoomK: 0.5, shk: 0.06, shell: true, sens: 1 },
   sniper: { name: 'Fusil de francotirador', mag: 5, rate: 1.0, reload: 2.8, pierce: true, auto: false, spreadK: 1.8, zoomK: 0.05, shk: 0.14, shell: true, sens: 0.3, sil: true },
 };

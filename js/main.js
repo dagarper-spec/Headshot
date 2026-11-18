@@ -151,11 +151,11 @@ async function boot() {
   let eqPlan = null;
   const begin = (lvl, ez) => {
     if (S.state === 'pause') return launch(lvl, ez);
-    eqPlan = [lvl, ez]; ui.hide('menu'); ui.hide('over'); ui.hide('levels'); ui.hide('endless');
+    eqPlan = [lvl, ez]; ensureWeapon(CFG.weapon.kind); ui.hide('menu'); ui.hide('over'); ui.hide('levels'); ui.hide('endless');
     renderEquip(data, async () => { writeSave(data); applyUpgrades(data); await ensureWeapon(CFG.weapon.kind); });
     ui.show('equip');
   };
-  $('eqGo').onclick = () => { ui.hide('equip'); launch(...eqPlan); };
+  $('eqGo').onclick = async () => { ui.hide('equip'); applyUpgrades(data); await ensureWeapon(CFG.weapon.kind); launch(...eqPlan); }; // el modelo del arma debe estar cargado
   $('eqBack').onclick = () => { ui.hide('equip'); ui.menu('HEADSHOT', 'Jugar', ''); S.state = 'menu'; syncCont(false); };
   $('start').onclick = () => begin(0); // Jugar: siempre desde el nivel 1 (o continúa si está en pausa)
   $('cont').onclick = () => { let i = Math.min(data.level, LEVELS.length - 1); while (i > 0 && !unlocked(data, i)) i--; begin(i); };
@@ -234,7 +234,7 @@ async function boot() {
         ui.show('shopBtn'); ui.show('lvlOver');
       } else { ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar'); ui.hide('shopBtn'); ui.show('lvlOver'); }
     }
-    S.zoom = input.zoom && S.state === 'play'; document.body.classList.toggle('scope', S.zoom && CFG.weapon.kind === 'sniper');
+    S.zoom = input.zoom && S.state === 'play'; document.body.classList.toggle('sniperzoom', S.zoom && CFG.weapon.kind === 'sniper');
     S.crouch = input.crouch && S.state === 'play';
     if (input.pulse > 0) input.pulse -= raw;
     if (S.state === 'play') {
@@ -244,7 +244,7 @@ async function boot() {
       core.look(input.dx - input.turn * 2.4 * k + input.rx * 3.3 * k, input.dy + input.ry * 2.3 * k);
       updateDrones(dt); core.update(dt, input);
       if (input.reload) reload();
-      updateCombat(dt, input.fire || input.pulse > 0); // pulse = toque en la ruleta derecha
+      updateCombat(dt, input.fire || input.pulse > 0 || (CFG.weapon.auto && input.rHeld())); // pulse = toque en la ruleta derecha
     } else core.update(dt, input);
     input.dx = input.dy = 0; input.reload = false;
     sfx.droneHum(S.state === 'play' ? S.drones.reduce((v, d) => (d.on && d.alive ? Math.max(v, 1 - Math.hypot(d.x - S.player.x, d.z - S.player.z) / 22) : v), 0) : 0);
