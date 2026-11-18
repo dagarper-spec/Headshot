@@ -173,6 +173,10 @@ async function boot() {
     if (document.pointerLockElement) document.exitPointerLock();
     ui.menu('PAUSA', 'Continuar', note(), true); syncCont(true); music.mode('menu');
   };
+  $('homeBtn').onclick = () => { // volver a la portada para elegir modo
+    ui.hide('over'); ui.hide('hud'); ui.hide('touch'); S.state = 'menu'; S.endless = null; S.custom = null;
+    ui.menu('HEADSHOT', 'Jugar', ''); syncCont(false); music.mode('menu');
+  };
   $('bPause').onclick = pause;
   $('restart').onclick = () => { const ez = S.endless ? S.endless.zone : null; S.state = 'menu'; begin(S.level, ez); }; // reinicia el nivel actual
   addEventListener('keydown', (e) => { if (e.code === 'KeyP') pause(); });

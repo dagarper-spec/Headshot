@@ -87,7 +87,7 @@ export const sfx = {
 // ---- Música: MP3 solo en menús/resultados; durante la partida suena una pista procedural calmada (WebAudio). ----
 const song = typeof Audio !== 'undefined' ? new Audio('assets/audio/musica.mp3') : null;
 let musicOn = true, duck = 0, mode = 'menu';
-const MUSIC_VOL = 0.2;
+const MUSIC_VOL = 0.09;
 if (song) { song.loop = true; song.preload = 'auto'; song.volume = 0; }
 
 // Pista calmada: pad suave + arpegio + bajo, en bucle de 4 acordes (Am F C G), 74 bpm.
