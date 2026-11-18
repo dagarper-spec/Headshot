@@ -74,3 +74,20 @@ export const LEVELS = [
     drones: [{ x: -4, z: -4 }, { x: 4, z: -5 }],
     enemies: [{ x: 0, z: -11.5, boss: true, seg: true, vest: true, role: 'flank', tint: 0x2e3238 }, { x: 4, z: -12.5, later: true, role: 'sniper', tint: 0x4a5a3a }], aim: 0.95, react: 0.5, acc: 0.3, burst: 0.2, hide: [1.6, 3], chest: [13, -13] },
 ];
+
+// ----- Modo infinito: genera la oleada w de una zona reutilizando posiciones de aparición ya validadas -----
+const TINTS = [0, 0x6f86a8, 0xb07a68, 0x6a7f5a, 0x8a6aa8, 0xa89a5a];
+export function waveLevel(zone, w) {
+  const pts = []; LEVELS.forEach((l) => { if ((l.zone || 0) === zone) l.enemies.forEach((e) => pts.push({ x: e.x, z: e.z })); });
+  for (let i = pts.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [pts[i], pts[j]] = [pts[j], pts[i]]; }
+  const n = w <= 1 ? 1 : w <= 3 ? 2 : 3, enemies = [];
+  for (let k = 0; k < n; k++) {
+    const roles = ['rifle'];
+    if (w >= 2) roles.push('flank', 'flank'); if (w >= 3) roles.push('grenadier'); if (w >= 4) roles.push('shield'); if (zone === 1 && w >= 5) roles.push('sniper');
+    const role = roles[(Math.random() * roles.length) | 0], d = { x: pts[k].x, z: pts[k].z, role, tint: TINTS[(Math.random() * TINTS.length) | 0] };
+    if (role === 'shield') d.shield = true; else if (role !== 'sniper') { d.helmet = Math.random() < Math.min(0.7, 0.12 * w); d.vest = w >= 3 && Math.random() < 0.3; }
+    enemies.push(d);
+  }
+  return { zone, name: 'Oleada ' + w, par: 0, endless: true, snipeAim: 2.6, enemies, drones: zone === 1 && w >= 4 && w % 3 === 1 ? [{ x: 0, z: -2 }] : [],
+    aim: Math.max(0.75, 1.3 - 0.04 * w), react: Math.max(0.42, 0.8 - 0.03 * w), acc: Math.min(0.4, 0.25 + 0.012 * w), burst: Math.min(0.4, 0.05 * w), hide: [Math.max(1.2, 2.4 - 0.1 * w), Math.max(2.2, 4.2 - 0.12 * w)] };
+}

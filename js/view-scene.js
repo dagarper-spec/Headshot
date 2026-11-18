@@ -207,13 +207,13 @@ export function createView(canvas, tier, model, fpsData, props) {
   const view = {
     setZone,
     setWeapon(k) { weapon = k; gun.visible = k !== 'rev'; rev.visible = k === 'rev'; },
-    warn: [], // enemigos que te apuntan: {a: ángulo en pantalla, k: carga 0..1} (lo lee la interfaz)
+    pk: 0, warn: [], // enemigos que te apuntan: {a: ángulo en pantalla, k: carga 0..1} (lo lee la interfaz)
     scene, camera,
     // rp: progreso de recarga 0..1 (o -1); fx aporta retroceso y temblor.
     sync(S, time, dt, fx, rp) {
       const p = S.player, bob = Math.sin(time * 9) * Math.min(p.speed / 5, 1);
       zk += ((S.zoom ? 1 : 0) - zk) * Math.min(1, dt * 12);
-      const f = 75 - 33 * zk;
+      view.pk = Math.max(0, view.pk - dt * 5); const f = 75 - 33 * zk - view.pk * 9; // pk: golpe de FOV al matar
       if (Math.abs(camera.fov - f) > 0.05) { camera.fov = f; camera.updateProjectionMatrix(); }
       const hurt = S.hp < S.maxHp, sway = hurt ? 0.0035 : 0.0012; // herido = puntería temblorosa
       const dead = S.state === 'over' ? Math.min(S.deathT, 0.7) : 0;

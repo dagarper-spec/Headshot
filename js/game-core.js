@@ -1,5 +1,5 @@
 // Lógica pura del duelo (sin Three.js ni DOM): estado, jugador, IA enemiga con coberturas y niveles.
-import { CFG, LEVELS, setZone } from './config.js';
+import { CFG, waveLevel, LEVELS, setZone } from './config.js';
 import { blocked, free, rayWorld, surface } from './game-geom.js';
 
 // Bus de eventos mínimo: la lógica emite, la vista/audio/UI escuchan.
@@ -16,6 +16,7 @@ export const S = {
   enemies: [], // Object Pool reutilizado en cada nivel
   gren: [], mines: [],            // pools de granadas y minas
   st: { reloads: 0, headHits: 0, dmg: 0 }, // estadísticas del intento (para las estrellas)
+  combo: 0, comboT: 0, bestCombo: 0, points: 0, kills: 0, custom: null, endless: null,
   vest: 0, magBonus: 0, radarT: 0, chest: null, chestCoins: 0, pre: { vest: false, med: false },
 };
 for (let i = 0; i < 4; i++) S.gren.push({ on: false, x: 0, z: 0, sx: 0, sz: 0, t: 0, T: 1, y: 1.6 });
@@ -105,15 +106,24 @@ function setGoal(e, goal, next) {
   e.path = findPath(e.x, e.z, goal.x, goal.z) || [goal];
 }
 
-const lvl = () => LEVELS[S.level];
+const lvl = () => S.custom || LEVELS[S.level];
 
-export function startLevel(i) {
+// Modo infinito: oleadas crecientes; la siguiente conserva vida y racha (keep).
+export function startEndless(z) { S.endless = { zone: z, wave: 1 }; startLevel(z ? 4 : 0, waveLevel(z, 1)); }
+export function nextWave() {
+  const e = S.endless; e.wave++; const hp = S.hp, mx = S.maxHp;
+  startLevel(e.zone ? 4 : 0, waveLevel(e.zone, e.wave), true);
+  S.maxHp = mx; S.hp = Math.min(mx, hp + (e.wave % 2 ? 1 : 0)); S.points += 200 * (e.wave - 1);
+}
+export function startLevel(i, custom, keep) {
+  S.custom = custom || null; if (!custom) S.endless = null;
   S.level = i % LEVELS.length;
   const lv = lvl();
   if ((lv.zone || 0) !== (CFG.zone || 0) || !CFG.zoneInit) { setZone(lv.zone || 0); CFG.zoneInit = true; buildNav(); }
   Object.assign(S, { t: 0, grace: 3, deathT: 0, hp: CFG.player.hp, maxHp: CFG.player.hp, mag: CFG.weapon.mag,
     reloading: false, fireT: 0, latch: false, zoom: false, crouch: false, eye: CFG.eye, state: 'play' });
   Object.assign(S.player, { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 });
+  if (!keep) { S.combo = S.comboT = S.bestCombo = S.points = S.kills = 0; }
   S.st = { reloads: 0, headHits: 0, dmg: 0, droneT: 0 }; S.vest = S.pre.vest ? 1 : 0; S.magBonus = 0; S.radarT = 0; S.chestCoins = 0;
   if (S.pre.med) { S.maxHp++; S.hp++; }
   S.pre = { vest: false, med: false };
@@ -148,6 +158,7 @@ export function update(dt, inp) {
     return;
   }
   if (S.state !== 'play') return;
+  if (S.comboT > 0 && (S.comboT -= dt) <= 0) S.combo = 0;
   S.t += dt; S.grace = Math.max(0, S.grace - dt);
   S.eye += ((S.crouch ? CFG.eyeCrouch : CFG.eye) - S.eye) * Math.min(1, dt * 10); // agacharse/levantarse suave
   movePlayer(dt, inp);
@@ -375,7 +386,7 @@ function enemyShoot(e) {
 
 function hurtPlayer(head, dmg = 1) {
   if (!head && S.vest > 0) { S.vest = 0; emit('vestHit'); return; } // el chaleco temporal absorbe un tiro al cuerpo
-  S.st.dmg++; S.hp = head ? 0 : S.hp - dmg;
+  S.st.dmg++; S.combo = 0; S.comboT = 0; S.hp = head ? 0 : S.hp - dmg;
   emit('hurt', { head });
   if (S.hp <= 0) { S.hp = 0; S.state = 'over'; S.deathT = 0; emit('over', { head }); }
 }
@@ -413,6 +424,8 @@ export function damageEnemy(e, head, pt, dir) {
   else e.hp -= 1;
   if (e.hp > 0) { e.acc *= 0.7; emit('hit', { e, head, pt, dir }); retreat(e); return; }
   e.alive = false; e.aiming = false; e.moving = false; e.deadT = 0;
-  emit('kill', { e, head, pt, dir });
+  S.kills++; S.combo = S.comboT > 0 ? S.combo + 1 : 1; S.comboT = 7; S.bestCombo = Math.max(S.bestCombo, S.combo);
+  const gain = (head ? 150 : 100) * Math.min(S.combo, 5); S.points += gain;
+  emit('kill', { e, head, pt, dir, combo: S.combo, gain });
   if (!S.enemies.some((o) => o.active && o.alive) && !S.drones.some((d) => d.on && d.alive)) { S.state = 'win'; emit('win', { time: S.t }); }
 }

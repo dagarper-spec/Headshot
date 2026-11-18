@@ -13,6 +13,10 @@ export const ui = {
     $('shf').style.width = (S.vest > 0 ? 100 : 0) + '%';
     txt('wv', name); $('dalert').classList.toggle('on', !!S.droneSeen);
     txt('score', mmss(S.t));
+    txt('combo', S.points > 0 || S.endless ? (S.endless ? 'OLEADA ' + S.endless.wave + ' \u00b7 ' : '') + S.points + ' pts' : '');
+    const sk = $('streak'), hot = S.combo >= 2 && S.comboT > 0;
+    sk.classList.toggle('on', hot);
+    if (!hot) sk._c = 0; else { if (sk._c !== S.combo) { sk._c = S.combo; sk.classList.remove('bump'); void sk.offsetWidth; sk.classList.add('bump'); } sk.firstElementChild.textContent = 'RACHA x' + Math.min(S.combo, 5); sk.querySelector('u').style.width = (S.comboT / 7) * 100 + '%'; }
     txt('mag', S.reloading ? '--' : S.mag);
     const cb = $('chestbar'), ch = S.gold && !S.gold.open && S.gold.prog > 0.02 ? S.gold : S.chest, on = ch && !ch.open && ch.prog > 0.02;
     if (cb.style.display !== (on ? 'block' : 'none')) cb.style.display = on ? 'block' : 'none';
@@ -70,5 +74,7 @@ export const ui = {
     const tick = (n) => { const k = Math.min(1, (n - t0 - 900) / T); el.textContent = Math.round(r.total * Math.max(0, 1 - Math.pow(1 - Math.max(0, k), 3))); if (k < 1) requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   },
+  // Texto flotante de puntos al matar (reinicia la animación CSS).
+  pop(text, head) { const el = $('pop'); el.textContent = text; el.className = head ? 'head' : ''; void el.offsetWidth; el.classList.add('on'); },
   toast(t) { $('toast').textContent = t; ui.flashClass('toast', 'on', 2200); },
 };

@@ -42,7 +42,7 @@ async function boot() {
   }
   const fx = createFx(view.scene, view.camera, view);
   window.headshot.fx = fx; window.headshot.view = view; // depuración
-  let wT = 0, slowT = 0, endTimer = 0; // cámara lenta al terminar el nivel
+  let wT = 0, slowT = 0, endTimer = 0, waveT = 0; // cámara lenta al terminar el nivel
 
   // ----- Eventos de la lógica -> efectos, sonido y UI -----
   const fq = { low: 0.5, medium: 0.75, high: 1 };
@@ -93,15 +93,20 @@ async function boot() {
     fx.blood(d.pt, d.dir || [0, 0, 0], d.head ? 2.4 : 1.5); splatBehind(d.pt, d.dir, d.head ? 0.8 : 0.55);
     const x = d.e.x, z = d.e.z; setTimeout(() => fx.pool(x, z), 500); // el charco crece bajo el cuerpo
   });
+  on('kill', (d) => { // puntos flotantes, sonido de racha y cámara lenta con golpe de FOV en los headshots
+    ui.pop('+' + d.gain + (d.head ? ' HEADSHOT' : ''), d.head); if (d.combo >= 2) sfx.combo(Math.min(d.combo, 6));
+    if (d.head) { slowT = Math.max(slowT, 0.5); view.pk = 1; }
+  });
   on('droneSpot', () => { ui.toast('¡El dron te ha localizado!'); sfx.warn(0.6); });
   on('droneDown', (d) => { sfx.kill(); sfx.hit(); ui.hitmarker(true, false); fx.impact(d.pt, [0, 1, 0], 'metal', 1.6, false); ui.toast('Dron derribado'); });
   on('droneCrash', (d) => { fx.impact([d.x, 0.1, d.z], [0, 1, 0], 'metal', 2.2, false); sfx.armor(); });
   on('hurt', (d) => { sfx.hurt(); ui.hurt(); fx.shake = d.head ? 1 : 0.6; if (!d.head) ui.toast('Herido: un tiro más y caes'); });
   on('reload', () => { const r = CFG.weapon.reload; sfx.magOut(r * 0.22); sfx.magIn(r * 0.62); sfx.slide(r * 0.86); });
   on('empty', () => sfx.empty());
-  on('level', (i) => { spawnDrones(S.droneList || []); view.setZone(LEVELS[i].zone || 0); fx.clear(); ui.banner(LEVELS[i].name.toUpperCase(), 1600); sfx.wave(); });
+  on('level', (i) => { const L = S.custom || LEVELS[i]; spawnDrones(S.droneList || []); view.setZone(L.zone || 0); fx.clear(); ui.banner(L.name.toUpperCase(), 1600); sfx.wave(); });
   const finish = () => { slowT = 1.1; endTimer = 1.3; setTimeout(() => music.mode('menu'), 1300); };
-  on('win', finish);
+  // Modo infinito: al limpiar la oleada se prepara la siguiente en vez de mostrar resultados.
+  on('win', () => { if (S.endless) { waveT = 2.2; ui.toast('Oleada superada'); } else finish(); });
   on('over', finish);
 
   // ----- Menús -----
@@ -121,7 +126,7 @@ async function boot() {
   $('menuShop').onclick = () => openShop('menu');
   $('shopBack').onclick = () => { ui.hide('shop'); ui.show(shopFrom); syncCont(S.state === 'pause'); };
   const note = () => levelLabel(data.level % LEVELS.length);
-  const begin = (lvl) => {
+  const begin = (lvl, ez) => { // ez: zona del modo infinito (si se indica)
     try { initAudio(); } catch { /* sin audio */ }
     S.hasPlan = !!data.items.plano;
     music.setOn(data.music); music.mode('game');
@@ -133,7 +138,7 @@ async function boot() {
       data.cons = data.cons || {};
       if (data.cons.cMed > 0) { data.cons.cMed--; S.pre.med = true; }
       if (data.cons.cVest > 0) { data.cons.cVest--; S.pre.vest = true; }
-      writeSave(data); resetCrouch(); core.startLevel(lvl);
+      writeSave(data); resetCrouch(); waveT = 0; ez != null ? core.startEndless(ez) : core.startLevel(lvl);
     }
   };
   $('start').onclick = () => begin(0); // Jugar: siempre desde el nivel 1 (o continúa si está en pausa)
@@ -149,8 +154,19 @@ async function boot() {
   let lvFrom = 'menu';
   $('lvlBtn').onclick = () => openLevels('menu'); $('lvlOver').onclick = () => openLevels('over');
   $('lvlBack').onclick = () => { ui.hide('levels'); ui.show(lvFrom); };
-  $('again').onclick = () => begin(S.state === 'win' && unlocked(data, S.level + 1) && S.level + 1 < LEVELS.length ? S.level + 1 : S.level); // victoria -> siguiente; derrota -> reintentar
+  $('again').onclick = () => S.endless ? begin(0, S.endless.zone) : begin(S.state === 'win' && unlocked(data, S.level + 1) && S.level + 1 < LEVELS.length ? S.level + 1 : S.level); // victoria -> siguiente; derrota -> reintentar
   addEventListener('keydown', (e) => { if (e.code === 'Enter' && !$('over').classList.contains('hide')) $('again').click(); });
+  // ----- Modo infinito: selector de zona y récords -----
+  const openEndless = () => {
+    ui.hide('menu'); const el = $('endList'); el.innerHTML = '';
+    ['Almacén', 'Azotea'].forEach((n, z) => {
+      const ok = z === 0 || unlocked(data, 4), r = data.endless[z], b = document.createElement('button');
+      b.className = 'big'; b.disabled = !ok; b.innerHTML = n + '<small>' + (ok ? (r ? 'Récord: oleada ' + r.wave + ' \u00b7 ' + r.pts + ' pts' : 'Sin récord todavía') : 'Desbloquéala en la campaña') + '</small>';
+      b.onclick = () => { ui.hide('endless'); begin(0, z); }; el.appendChild(b);
+    });
+    ui.show('endless');
+  };
+  $('endBtn').onclick = openEndless; $('endBack').onclick = () => { ui.hide('endless'); ui.show('menu'); };
   const pause = () => {
     if (S.state !== 'play') return;
     S.state = 'pause'; input.fire = false; input.zoom = false;
@@ -158,7 +174,7 @@ async function boot() {
     ui.menu('PAUSA', 'Continuar', note(), true); syncCont(true); music.mode('menu');
   };
   $('bPause').onclick = pause;
-  $('restart').onclick = () => { S.state = 'menu'; begin(S.level); }; // reinicia el nivel actual
+  $('restart').onclick = () => { const ez = S.endless ? S.endless.zone : null; S.state = 'menu'; begin(S.level, ez); }; // reinicia el nivel actual
   addEventListener('keydown', (e) => { if (e.code === 'KeyP') pause(); });
   document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && !input.touch) pause(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); music.pause(); } else music.setOn(data.music); });
@@ -181,15 +197,20 @@ async function boot() {
     prev = now;
     if (slowT > 0) slowT -= raw;
     const dt = raw * (slowT > 0 ? 0.25 : 1); // cámara lenta
+    if (waveT > 0 && (waveT -= raw) <= 0 && S.endless && S.state === 'win') core.nextWave(); // siguiente oleada
     if (endTimer > 0 && (endTimer -= raw) <= 0) { // mostrar resultado tras la cámara lenta
       if (document.pointerLockElement) document.exitPointerLock();
-      if (S.state === 'win') {
-        const got = evalStars(S), r = applyResult(data, S.level, got, S.t, S.chestCoins);
+      if (S.endless) { // fin del modo infinito: récord y monedas según los puntos
+        const z = S.endless.zone, w = S.endless.wave, pts = S.points, coins = Math.floor(pts / 10), old = data.endless[z], rec = !old || pts > old.pts;
+        if (rec) data.endless[z] = { wave: w, pts }; data.coins += coins; writeSave(data);
+        ui.end(false, rec ? 'NUEVO RÉCORD' : 'HAS CAÍDO', 'Oleada <b>' + w + '</b> \u00b7 <b>' + pts + '</b> puntos<br>Bajas: <b>' + S.kills + '</b> \u00b7 Mejor racha: <b>x' + S.bestCombo + '</b><br>+<b>' + coins + '</b> monedas', 'Otra vez'); ui.hide('shopBtn'); ui.hide('lvlOver');
+      } else if (S.state === 'win') {
+        const got = evalStars(S), r = applyResult(data, S.level, got, S.t, S.chestCoins), cb = S.bestCombo >= 3 ? (S.bestCombo - 2) * 20 : 0; data.coins += cb; r.total += cb; // bonus por racha
         data.level = Math.max(data.level, Math.min(S.level + 1, LEVELS.length - 1)); writeSave(data);
         const L = LEVELS[S.level];
         const last = S.level + 1 >= LEVELS.length, nxt = !last && unlocked(data, S.level + 1);
         ui.result({ title: L.boss ? 'ZONA SUPERADA' : 'NIVEL SUPERADO', got, time: S.t, par: L.par, goal: L.goalText, total: r.total, bonus: r.bonus, chest: r.chest, first: r.first, coins: data.coins,
-          note: !last && !nxt ? 'Siguiente nivel bloqueado: ' + (LEVELS[S.level + 1].boss ? 'necesitas 5 \u2605 en los niveles de la zona' : 'supera este nivel') : '' }, nxt ? 'Siguiente nivel' : 'Repetir nivel');
+          note: (cb ? 'Racha máx. x' + S.bestCombo + ': +' + cb + ' monedas. ' : '') + (!last && !nxt ? 'Siguiente nivel bloqueado: ' + (LEVELS[S.level + 1].boss ? 'necesitas 5 \u2605 en los niveles de la zona' : 'supera este nivel') : '') }, nxt ? 'Siguiente nivel' : 'Repetir nivel');
         ui.show('shopBtn'); ui.show('lvlOver');
       } else { ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar'); ui.hide('shopBtn'); ui.show('lvlOver'); }
     }
@@ -215,7 +236,7 @@ async function boot() {
     xh.style.setProperty('--g', gap.toFixed(1) + 'px'); xh.classList.toggle('zoom', S.zoom);
     const st = stats();
     view.sync(S, now / 1000, dt, fx, S.reloading ? 1 - S.reloadT / st.reload : -1);
-    if (S.state !== 'menu') ui.hud(S, st, levelLabel(S.level));
+    if (S.state !== 'menu') ui.hud(S, st, S.endless ? 'INFINITO' : levelLabel(S.level));
     view.render();
 
     // Calidad adaptable: si la media de FPS baja de 40 durante 2 s, bajar un nivel.

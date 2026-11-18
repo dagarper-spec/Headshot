@@ -58,6 +58,7 @@ export const sfx = {
   helmet() { ring([1250, 2060, 3350, 4700], 0.45, 0.28); noise(0.04, 0.6, 7000, 2000, 'highpass'); tone(220, 100, 0.08, 'square', 0.2); },
   kill() { noise(0.35, 0.5, 800, 80, 'lowpass', 0.3, 0.25); tone(80, 40, 0.3, 'sine', 0.6, 0, 0.25); }, // caída del cuerpo
   killHead() { noise(0.4, 0.6, 1300, 90, 'lowpass', 0.3); tone(70, 30, 0.35, 'sine', 0.7); noise(0.3, 0.45, 700, 80, 'lowpass', 0.3, 0.3); },
+  combo(n = 2) { tone(520 + n * 110, 900 + n * 160, 0.14, 'triangle', 0.22); ring([1900 + n * 300], 0.22, 0.1); }, // sube de tono con la racha
   hurt() { noise(0.25, 0.55, 600, 90, 'lowpass'); tone(110, 50, 0.35, 'sawtooth', 0.45); tone(60, 40, 0.5, 'sine', 0.6); },
   // Recarga: cargador fuera, cargador dentro, corredera
   magOut(d = 0) { noise(0.05, 0.35, 5000, 1500, 'bandpass', 0, d); tone(300, 160, 0.07, 'square', 0.1, 0, d); },
