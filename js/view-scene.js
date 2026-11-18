@@ -115,13 +115,16 @@ export function createView(canvas, tier, model, fpsData, props) {
   const z1 = new THREE.Group(); scene.children.slice(n0).forEach((c) => z1.add(c)); scene.add(z1);
   const roof = buildRoof(ZONES[1].crates, H), rlamps = roof.lamps; scene.add(roof.group);
   const hemi = scene.children.find((c) => c.isHemisphereLight), ENV = [
-    { bg: 0x07080a, fog: [0x0b0d11, 0.03], hemi: 0.5, exp: 1.1 }, { bg: 0x8a8fb0, fog: [0x7a7f9c, 0.012], hemi: 1.1, exp: 1.3 }];
+    { bg: 0x07080a, fog: [0x0b0d11, 0.03], hemi: 0.5, exp: 1.1 }, { bg: 0xb99c9c, fog: [0xb99c9c, 0.0105], hemi: 0.5, exp: 1.15 }];
   const drones = createDrones(scene, 2);
+  // Reflejos de la azotea: entorno generado desde su propio cielo (charcos, metales)
+  const ENV_ROOM = scene.environment, pm2 = new THREE.PMREMGenerator(renderer), es = new THREE.Scene(); es.add(roof.envSky());
+  const ENV_ROOF = pm2.fromScene(es, 0.02).texture; pm2.dispose();
   let zone = 0;
   // Cambia el escenario visible: almacén (zona 0) o azotea (zona 1).
   function setZone(z) {
     zone = z; z1.visible = z === 0; roof.group.visible = z === 1;
-    const e = ENV[z]; scene.background.setHex(e.bg); scene.fog.color.setHex(e.fog[0]); scene.fog.density = e.fog[1]; hemi.intensity = e.hemi; renderer.toneMappingExposure = e.exp;
+    const e = ENV[z]; scene.background.setHex(e.bg); scene.fog.color.setHex(e.fog[0]); scene.fog.density = e.fog[1]; hemi.intensity = e.hemi; renderer.toneMappingExposure = e.exp; scene.environment = z === 1 ? ENV_ROOF : ENV_ROOM;
   }
 
   // ---------- Arma en primera persona ----------
@@ -185,10 +188,11 @@ export function createView(canvas, tier, model, fpsData, props) {
     [...lamps, ...rlamps].forEach((l, i) => {
       const k = i % 4; // las 4 lámparas de cada zona se reparten por calidad
       l.visible = k < q.lights;
-      l.castShadow = q.shadow > 0 && k < q.spots;
+      l.castShadow = q.shadow > 0 && k < q.spots && i < lamps.length; // las farolas de la azotea no proyectan: lo hace el sol
       if (l.shadow.map) { l.shadow.map.dispose(); l.shadow.map = null; }
       l.shadow.mapSize.set(q.shadow || 512, q.shadow || 512);
     });
+    const sn = roof.sun; sn.castShadow = q.shadow > 0; if (sn.shadow.map) { sn.shadow.map.dispose(); sn.shadow.map = null; } sn.shadow.mapSize.set(Math.min(q.shadow || 1024, 2048), Math.min(q.shadow || 1024, 2048));
     bloom.enabled = q.bloom; fxaa.enabled = q.fxaa;
     [composer.renderTarget1, composer.renderTarget2].forEach((t) => { t.samples = q.msaa; t.dispose(); });
     resize();
@@ -229,7 +233,7 @@ export function createView(canvas, tier, model, fpsData, props) {
         gun.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.14, -0.38 + fx.kick * 0.05 + 0.04 * zk);
         gun.rotation.set(fx.kick * 0.22 - rl * 0.8, 0, rl * 0.5);
       }
-      if (zone === 1) roof.sky.position.set(p.x, 0, p.z);
+      if (zone === 1) { roof.sky.position.set(p.x, 0, p.z); roof.update(time); }
       drones.sync(S, time); items.sync(S, time);
       lamps[1].intensity = 380 * (Math.random() < 0.03 ? 0.3 : 1); // lámpara que parpadea
       panels[1].color.setScalar(lamps[1].intensity < 380 ? 0.8 : 4);
