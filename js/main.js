@@ -75,7 +75,7 @@ async function boot() {
   on('armor', (d) => { sfx.armor(); fx.impact(d.pt, [0, 1, 0], 'metal'); if (d.vest) ui.toast('¡Placa antibalas! Otro tiro al cuerpo'); if (d.seg) ui.toast('Invulnerable: ¡derriba sus drones!'); });
   on('reserve', () => { ui.toast('¡Francotirador en la azotea!'); sfx.warn(0.8); });
   on('vestHit', () => { sfx.armor(); ui.toast('El chaleco ha absorbido el impacto'); });
-  on('throw', (d) => { sfx.pin(); ui.toast('¡Granada!'); [0.5, 0.8, 1.0, 1.15, 1.3, 1.4].forEach((t) => setTimeout(sfx.beep, (d.T + t) * 1000 - 0)); });
+  on('throw', (d) => { sfx.pin(); ui.toast('¡Granada!'); [[0, 1], [0.22, 0.55], [0.38, 0.3]].forEach(([t, v]) => setTimeout(() => sfx.clunk(v), (d.T + t) * 1000)); });
   on('boom', (d) => { fx.boom(d.x, d.y, d.z); sfx.boom(); });
   on('mine', () => sfx.pin());
   on('phase', (d) => { sfx.phase(); ui.banner(d.ph === 2 ? 'FASE 2 · ESCUDO' : 'FASE 3 · SIN ARMADURA', 1600); });
@@ -118,8 +118,9 @@ async function boot() {
     tier = sel.value === 'auto' ? autoTier() : sel.value; applyTier();
   };
   const bl = $('blood'); bl.value = data.blood; bl.onchange = () => { data.blood = bl.value; writeSave(data); fx.setBlood(data.blood); };
-  const mus = $('music'); mus.value = data.musicVol; music.setVol(data.musicVol / 50); music.setOn(false); // empieza al pulsar Jugar (gesto del usuario)
-  mus.oninput = () => { data.musicVol = +mus.value; data.music = data.musicVol > 0; music.setVol(data.musicVol / 50); music.setOn(data.music); };
+  const vk = (v) => (v <= 50 ? v / 50 : 1 + (v - 50) / 25); // 50 = nivel por defecto, 100 = triple
+  const mus = $('music'); mus.value = data.musicVol; music.setVol(vk(data.musicVol)); music.setOn(false); // empieza al pulsar Jugar (gesto del usuario)
+  mus.oninput = () => { data.musicVol = +mus.value; data.music = data.musicVol > 0; music.setVol(vk(data.musicVol)); music.setOn(data.music); };
   mus.onchange = () => writeSave(data);
   // ----- Tienda -----
   // Carga bajo demanda el modelo del arma equipada (los GLB pesan ~1,3 MB cada uno).
@@ -196,6 +197,8 @@ async function boot() {
     ui.show('endless');
   };
   $('endBtn').onclick = openEndless; $('endBack').onclick = () => { ui.hide('endless'); ui.show('menu'); };
+  $('pHome').onclick = () => $('homeBtn').click();
+  $('pCfg').onclick = () => $('cfgBtn').click();
   const pause = () => {
     if (S.state !== 'play') return;
     S.state = 'pause'; input.fire = false; input.zoom = false;
@@ -217,7 +220,7 @@ async function boot() {
     if (!rsT) { ra.textContent = '¿Seguro? Pulsa otra vez'; rsT = setTimeout(() => { rsT = 0; ra.textContent = 'Reiniciar todo el progreso'; }, 3500); return; }
     clearTimeout(rsT); rsT = 0; ra.textContent = 'Progreso borrado';
     for (const k of Object.keys(data)) delete data[k]; Object.assign(data, freshSave()); writeSave(data); applyUpgrades(data); syncCont(false);
-    $('quality').value = data.quality; $('blood').value = data.blood; $('music').value = data.musicVol; music.setVol(data.musicVol / 50); fx.setBlood(data.blood); music.setOn(true);
+    $('quality').value = data.quality; $('blood').value = data.blood; $('music').value = data.musicVol; music.setVol(vk(data.musicVol)); fx.setBlood(data.blood); music.setOn(true);
   };
   ui.menu('HEADSHOT', 'Jugar', ''); syncCont(false);
 

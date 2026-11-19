@@ -203,10 +203,10 @@ export function createView(canvas, tier, model, fpsData, props) {
 
   // ---------- Sincronización con el estado ----------
   const eu = new THREE.Euler();
-  let zk = 0, wasRl = false; // zk: 0 = cadera, 1 = apuntando con zoom
+  let drawT = 0, zk = 0, wasRl = false; // zk: 0 = cadera, 1 = apuntando con zoom
   const view = {
     setZone,
-    setWeapon(k) { weapon = WP[k] ? k : 'pistol'; wasRl = false; for (const n in WP) WP[n].gun.visible = n === weapon; },
+    setWeapon(k) { weapon = WP[k] ? k : 'pistol'; wasRl = false; drawT = 1; for (const n in WP) WP[n].gun.visible = n === weapon; },
     addWeapon(kind, gltf) { addW(kind, gltf); },
     hasWeapon: (k) => !!WP[k],
     pk: 0, zl: 1, warn: [], // enemigos que te apuntan: {a: ángulo en pantalla, k: carga 0..1} (lo lee la interfaz)
@@ -225,16 +225,20 @@ export function createView(canvas, tier, model, fpsData, props) {
         p.yaw + Math.cos(time * 1.3) * sway + (Math.random() - 0.5) * fx.shake * 0.03, dead * 0.5, 'YXZ');
       camera.rotation.copy(eu);
       const rl = rp >= 0 ? Math.sin(rp * Math.PI) : 0;
+      const od = drawT; drawT = Math.max(0, drawT - dt / 0.5); const dw = od * od; // sacar arma: sube desde abajo girada y se asienta
+      if (od > 0 && drawT <= 0 && WP[weapon].fpsv) WP[weapon].fpsv.fire(); // remate: la corredera/cerrojo se acomoda
       const w = WP[weapon], { fpsv, gun, GB, GZY } = w;
       if (fpsv) {
         if (rp >= 0 && !wasRl) fpsv.reload(CFG.weapon.reload); wasRl = rp >= 0; fpsv.update(dt, rp);
         const ax = Math.max(0.55, Math.min(1, camera.aspect / 1.5)); // en pantallas verticales el arma se acerca al centro
-        gun.position.set(GB[0] * ax * (1 - zk) + bob * 0.003, GB[1] + (GZY - GB[1]) * zk + bob * 0.004 - rl * 0.03, GB[2] + fx.kick * 0.05 * w.k + 0.03 * zk);
-        gun.rotation.set(fx.kick * 0.18 * w.k - rl * 0.25, 0, rl * 0.3);
+        gun.position.set(GB[0] * ax * (1 - zk) + bob * 0.003, GB[1] + (GZY - GB[1]) * zk + bob * 0.004 - rl * 0.03, GB[2] + fx.kick * 0.05 * w.k + 0.03 * zk + dw * 0.08);
+        gun.position.y -= dw * 0.3;
+        gun.rotation.set(fx.kick * 0.18 * w.k - rl * 0.25 - dw * 0.7, dw * 0.25, rl * 0.3 + dw * 0.35);
         if (weapon === 'sniper') gun.visible = zk < 0.55; // con el visor (zoom) se oculta el arma para ver a través de la mira
       } else {
         gun.position.set(0.17 * (1 - zk) + bob * 0.003, -0.17 + 0.05 * zk + bob * 0.005 - rl * 0.14, -0.38 + fx.kick * 0.05 + 0.04 * zk);
-        gun.rotation.set(fx.kick * 0.22 - rl * 0.8, 0, rl * 0.5);
+        gun.position.y -= dw * 0.3;
+        gun.rotation.set(fx.kick * 0.22 - rl * 0.8 - dw * 0.7, dw * 0.25, rl * 0.5 + dw * 0.35);
       }
       if (zone === 1) { roof.sky.position.set(p.x, 0, p.z); roof.update(time); }
       drones.sync(S, time); items.sync(S, time);
