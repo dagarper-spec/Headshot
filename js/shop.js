@@ -11,6 +11,8 @@ export const ITEMS = [
   { id: 'fast', kind: 'up', name: 'Recarga rápida',    desc: ['Recarga un 15 % más rápida', 'Recarga un 30 % más rápida'], prices: [360, 720] },
   { id: 'stab', kind: 'up', name: 'Estabilidad',       desc: ['Un 20 % menos de dispersión', 'Un 35 % menos de dispersión'], prices: [420, 800] },
   { id: 'vest', kind: 'up', name: 'Chaleco blindado',  desc: ['Blindaje 1: absorbe 1 tiro al cuerpo', 'Blindaje 2: absorbe 2 tiros', 'Blindaje 3: absorbe 3 tiros'], prices: [1200, 2000, 3000], needBoss: true },
+  { id: 'gren', kind: 'cons', name: 'Granadas ×3', desc: ['Mata en 3 m e ignora casco y placa'], price: 240, pack: 3, max: 9 },
+  { id: 'mine', kind: 'cons', name: 'Minas ×2', desc: ['Explotan cuando un enemigo pasa cerca'], price: 300, pack: 2, max: 6 },
   { id: 'cMed',  kind: 'cons', name: 'Botiquín',         desc: ['+1 vida en el próximo nivel'], price: 150 },
   { id: 'cVest', kind: 'cons', name: 'Chaleco temporal', desc: ['Absorbe 1 tiro al cuerpo'], price: 200 },
   { id: 'gRed',   kind: 'glove', name: 'Guantes rojos',   desc: ['Cosmético'], price: 250, color: 0x8e1b1b },
@@ -65,6 +67,8 @@ const ICON = {
   fast: () => '<circle cx="32" cy="36" r="20" fill="#232a33" stroke="#aab4c0" stroke-width="3"/><rect x="28" y="6" width="8" height="6" fill="#aab4c0"/><path d="M32 36V22" stroke="#ffb347" stroke-width="3" stroke-linecap="round"/><path d="M32 36l10 6" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M14 18l-8 6 8 4z M50 18l8 6-8 4z" fill="#8be28b"/>',
   stab: () => '<circle cx="32" cy="32" r="20" fill="none" stroke="#7fd0ff" stroke-width="3"/><circle cx="32" cy="32" r="4" fill="#ff6a5a"/><path d="M32 4v14M32 46v14M4 32h14M46 32h14" stroke="#e8eef5" stroke-width="3" stroke-linecap="round"/>',
   vest: () => '<path d="M18 8l8 4h12l8-4 10 10-6 8v28H14V26l-6-8z" fill="#3a4350" stroke="#aab4c0" stroke-width="2.5" stroke-linejoin="round"/><path d="M24 22h16v14H24z" fill="#2a313a" stroke="#6a7686" stroke-width="2"/><path d="M32 14v40" stroke="#6a7686" stroke-width="2"/><path d="M26 44h12" stroke="#ffb347" stroke-width="3"/>',
+  gren: () => '<ellipse cx="32" cy="38" rx="16" ry="19" fill="#4a5a3a" stroke="#222" stroke-width="2.5"/><path d="M20 30h24M19 40h26M22 49h20" stroke="#2c3724" stroke-width="2"/><rect x="27" y="12" width="10" height="8" fill="#9aa" stroke="#222" stroke-width="2"/><path d="M38 14l12-5v6l-10 3" fill="none" stroke="#bcc" stroke-width="3"/><circle cx="22" cy="14" r="5" fill="none" stroke="#bcc" stroke-width="2.5"/>',
+  mine: () => '<ellipse cx="32" cy="42" rx="24" ry="9" fill="#2d3128" stroke="#111" stroke-width="2.5"/><ellipse cx="32" cy="38" rx="22" ry="8" fill="#3d4436" stroke="#111" stroke-width="2.5"/><circle cx="32" cy="36" r="4" fill="#e22" stroke="#611" stroke-width="2"/><path d="M14 38l-5-5M50 38l5-5M32 29v-8" stroke="#888" stroke-width="3" stroke-linecap="round"/>',
   cMed: () => '<rect x="8" y="16" width="48" height="36" rx="6" fill="#e9eef2" stroke="#9aa6b2" stroke-width="2.5"/><rect x="24" y="10" width="16" height="8" rx="3" fill="#9aa6b2"/><path d="M32 24v20M22 34h20" stroke="#d6322a" stroke-width="7" stroke-linecap="round"/>',
   cVest: () => '<path d="M18 8l8 4h12l8-4 10 10-6 8v28H14V26l-6-8z" fill="#46516a" stroke="#8fb4ff" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="5 3"/><text x="32" y="44" text-anchor="middle" font-size="22" font-family="Impact,sans-serif" fill="#cfe0ff">x1</text>',
   glove: (c) => `<path d="M20 58V36l-8-10c-2-3 2-7 5-4l5 5V12c0-3 5-3 5 0v14V9c0-3 5-3 5 0v17V11c0-3 5-3 5 0v18V16c0-3 5-3 5 0v26c0 8-4 16-10 16z" fill="${c}" stroke="#0007" stroke-width="2" stroke-linejoin="round"/><path d="M20 50h22" stroke="#0006" stroke-width="3"/>`,
@@ -96,7 +100,7 @@ export function renderShop(d, save) {
       if (lv >= max) { st = 'Comprado'; cls += ' own'; } else if (it.needBoss && !bossDone) { st = 'Vence al jefe'; cls += ' no'; } else { st = '$ ' + price; canBuy = d.coins >= price; if (!canBuy) cls += ' no'; buy = () => { d.coins -= price; d.items[it.id] = lv + 1; }; }
     } else if (it.kind === 'cons') {
       const n = d.cons[it.id] || 0; desc = it.desc[0]; pips = n ? `<div class="have">Tienes ${n}</div>` : '';
-      st = n >= 3 ? 'Máximo' : '$ ' + it.price; canBuy = d.coins >= it.price && n < 3; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.cons[it.id] = n + 1; };
+      const mx = it.max || 3; st = n >= mx ? 'Máximo' : '$ ' + it.price; canBuy = d.coins >= it.price && n < mx; if (!canBuy) cls += ' no'; buy = () => { d.coins -= it.price; d.cons[it.id] = Math.min(mx, n + (it.pack || 1)); };
     } else if (it.kind === 'weapon' || it.kind === 'helmet') { // se compran aquí y se equipan en la pantalla de equipamiento
       const own = !!d.items[it.id]; desc = it.desc[0];
       if (it.needPlan && !d.items.plano && !own) { st = 'Falta el plano'; cls += ' no'; desc = 'Busca el baúl dorado oculto en el almacén'; }

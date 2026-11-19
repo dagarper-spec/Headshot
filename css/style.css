@@ -260,3 +260,15 @@ body.touch.sniper #touch #bZl{display:flex}
 body.touch #ammo{right:auto;left:50%;transform:translateX(-50%);text-align:center;bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(92px,34vmin,142px)*.5 + 12px)}
 @media (orientation:portrait){body.touch #ammo{bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(90px,30vw,128px)*.42 + 12px)}}
 .stn{grid-column:1/-1;color:#ffd75e;font-size:12px;letter-spacing:.1em}#equip h3{font-size:12px}
+
+/* Barra de blindaje: igual que la de vida, en azul */
+#shb{top:calc(max(14px,env(safe-area-inset-top)) + 24px);width:min(40vw,240px);height:20px;background:#0008;border:1px solid #fff3;border-radius:0}
+#shf{background:linear-gradient(90deg,#1f5fb8,#4aa3ee);transition:width .15s}
+#shb span{font-size:14px;line-height:20px;letter-spacing:0;color:#fff}
+#hel{top:calc(max(14px,env(safe-area-inset-top)) + 50px)}
+@media (orientation:portrait){#shb{width:36vw;height:18px}#shb span{line-height:18px}#hel{top:calc(max(14px,env(safe-area-inset-top)) + 46px)}}
+
+#bZoom{left:calc(var(--sl) + var(--pad)/2 - var(--b)/2)}
+body.touch.sniper #touch #bZoom{left:calc(var(--sl) + var(--pad)/2 - var(--b) - 4px)}
+#bZl{left:calc(var(--sl) + var(--pad)/2 + 4px)}
+.eqc{position:relative}.bdg{position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:50%;background:#ffd75e;color:#2a1100;font-style:normal;font-weight:700;font-size:13px;line-height:22px;text-align:center}

@@ -152,7 +152,9 @@ async function boot() {
       data.use = data.use || {};
       if (data.cons.cMed > 0 && data.use.cMed !== false) { data.cons.cMed--; S.pre.med = true; }
       if (data.cons.cVest > 0 && data.use.cVest !== false) { data.cons.cVest--; S.pre.vest = true; }
-      writeSave(data); resetCrouch(); waveT = 0; applyUpgrades(data); ez != null ? core.startEndless(ez) : core.startLevel(lvl); document.body.classList.toggle('sniper', CFG.weapon.kind === 'sniper');
+      writeSave(data); resetCrouch(); waveT = 0; applyUpgrades(data); ez != null ? core.startEndless(ez) : core.startLevel(lvl);
+      data.cons = data.cons || {}; S.explKind = data.expl && data.cons[data.expl] > 0 ? data.expl : ''; S.explN = S.explKind ? Math.min(data.cons[S.explKind], S.explKind === 'gren' ? 3 : 2) : 0;
+      document.body.classList.toggle('sniper', CFG.weapon.kind === 'sniper');
     }
   };
   // Pantalla de equipamiento previa a la misión.
@@ -160,6 +162,7 @@ async function boot() {
   const begin = (lvl, ez) => {
     if (S.state === 'pause') return launch(lvl, ez);
     eqPlan = [lvl, ez]; ensureWeapon(CFG.weapon.kind); ui.hide('menu'); ui.hide('over'); ui.hide('levels'); ui.hide('endless');
+    renderEquip.step = 0;
     renderEquip(data, async () => { writeSave(data); applyUpgrades(data); await ensureWeapon(CFG.weapon.kind); });
     ui.show('equip');
   };
@@ -242,6 +245,7 @@ async function boot() {
         ui.show('shopBtn'); ui.show('lvlOver');
       } else { ui.end(false, 'HAS CAÍDO', 'Aguantaste <b>' + S.t.toFixed(1) + ' s</b>', 'Reintentar'); ui.hide('shopBtn'); ui.show('lvlOver'); }
     }
+    { const l = S.explKind ? (S.explKind === 'gren' ? 'GRANADA' : 'MINA') + '<br>\u00d7' + S.explN : 'EXPLO-<br>SIVO', b = $('bGren'); if (b && b._l !== l) { b._l = l; b.innerHTML = l; b.classList.toggle('off', !S.explN); } }
     S.zoom = input.zoom && S.state === 'play'; document.body.classList.toggle('sniperzoom', S.zoom && CFG.weapon.kind === 'sniper');
     S.crouch = input.crouch && S.state === 'play';
     if (input.pulse > 0) input.pulse -= raw;
@@ -253,10 +257,11 @@ async function boot() {
       updateDrones(dt); core.update(dt, input);
       if (input.reload) reload();
       if (input.swap) swapWeapon();
+      if (input.gren && core.throwExplosive()) { const c = data.cons; c[S.explKind] = Math.max(0, (c[S.explKind] || 0) - 1); writeSave(data); sfx.pin(); }
       view.zl = input.zl;
       updateCombat(dt, input.fire || input.pulse > 0 || (CFG.weapon.auto && input.rHeld())); // pulse = toque en la ruleta derecha
     } else core.update(dt, input);
-    input.dx = input.dy = 0; input.reload = false; input.swap = false;
+    input.dx = input.dy = 0; input.reload = false; input.swap = false; input.gren = false;
     sfx.droneHum(S.state === 'play' ? S.drones.reduce((v, d) => (d.on && d.alive ? Math.max(v, 1 - Math.hypot(d.x - S.player.x, d.z - S.player.z) / 22) : v), 0) : 0);
     fx.update(dt); music.update(raw);
     { const km = ui.warn(S.state === 'play' ? view.warn : []); // aviso de apuntado: pitido que se acelera al cargar el tiro

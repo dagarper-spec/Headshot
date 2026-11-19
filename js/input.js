@@ -1,5 +1,5 @@
 // Entrada unificada: teclado + ratón (pointer lock) en escritorio, joystick + arrastre táctil en móvil.
-export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false, zoom: false, crouch: false, pulse: 0, rHeld: () => false, swap: false, zl: 1 };
+export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false, zoom: false, crouch: false, pulse: 0, rHeld: () => false, swap: false, zl: 1, gren: false };
 const zlLabel = () => { const b = document.getElementById('bZl'); if (b) b.innerHTML = 'ZOOM<br>' + (input.zl ? 2 : 1); };
 
 const keys = {};
@@ -20,6 +20,7 @@ export function initInput(canvas) {
     keys[e.code] = true;
     if (e.code === 'KeyR') input.reload = true;
     if (e.code === 'KeyQ' && !e.repeat) input.swap = true;
+    if (e.code === 'KeyG' && !e.repeat) input.gren = true;
     if (e.code === 'KeyX' && !e.repeat) { input.zl ^= 1; zlLabel(); }
     if (e.code === 'KeyC' && !e.repeat) toggleCrouch();
     if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
@@ -90,7 +91,7 @@ export function initInput(canvas) {
   hold($('bCrouch'), toggleCrouch, () => {});
   hold($('bRel'), () => { input.reload = true; }, () => {});
   hold($('bSwap'), () => { input.swap = true; }, () => {});
-  hold($('bGren'), () => {}, () => {}); // explosivo: de momento sin función
+  hold($('bGren'), () => { input.gren = true; }, () => {});
   hold($('bZl'), () => { input.zl ^= 1; zlLabel(); }, () => {});
 }
 

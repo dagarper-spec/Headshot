@@ -10,7 +10,7 @@ export const ui = {
   hud(S, st, name) {
     txt('hpt', '\u25CF'.repeat(S.hp) + '\u25CB'.repeat(S.maxHp - S.hp));
     $('hpf').style.width = (S.hp / S.maxHp) * 100 + '%';
-    $('shf').style.width = (S.vestMax > 0 ? Math.min(100, (S.vest / S.vestMax) * 100) : 0) + '%'; txt('shbt', 'BLINDAJE ' + '\u25C6'.repeat(S.vest) + '\u25C7'.repeat(Math.max(0, S.vestMax - S.vest)));
+    $('shf').style.width = (S.vestMax > 0 ? Math.min(100, (S.vest / S.vestMax) * 100) : 0) + '%'; txt('shbt', S.vestMax > 0 ? '\u25CF'.repeat(S.vest) + '\u25CB'.repeat(Math.max(0, S.vestMax - S.vest)) : '');
     txt('wv', name); $('dalert').classList.toggle('on', !!S.droneSeen);
     txt('hel', S.helmet > 0 ? 'CASCO ' + '\u25C6'.repeat(S.helmet) : '');
     txt('score', mmss(S.t));

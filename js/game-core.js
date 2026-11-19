@@ -17,10 +17,10 @@ export const S = {
   gren: [], mines: [],            // pools de granadas y minas
   st: { reloads: 0, headHits: 0, dmg: 0 }, // estadísticas del intento (para las estrellas)
   combo: 0, comboT: 0, bestCombo: 0, points: 0, kills: 0, custom: null, endless: null,
-  helmet: 0, vest: 0, vestMax: 0, slot: 0, ammo: {}, magBonus: 0, radarT: 0, chest: null, chestCoins: 0, pre: { vest: false, med: false },
+  explKind: '', explN: 0, explT: 0, helmet: 0, vest: 0, vestMax: 0, slot: 0, ammo: {}, magBonus: 0, radarT: 0, chest: null, chestCoins: 0, pre: { vest: false, med: false },
 };
-for (let i = 0; i < 4; i++) S.gren.push({ on: false, x: 0, z: 0, sx: 0, sz: 0, t: 0, T: 1, y: 1.6 });
-for (let i = 0; i < 6; i++) S.mines.push({ on: false, x: 0, z: 0, arm: 0 });
+for (let i = 0; i < 4; i++) S.gren.push({ on: false, own: false, x: 0, z: 0, sx: 0, sz: 0, t: 0, T: 1, y: 1.6 });
+for (let i = 0; i < 6; i++) S.mines.push({ on: false, own: false, x: 0, z: 0, arm: 0 });
 for (let i = 0; i < CFG.pool; i++) {
   S.enemies.push({ id: i, active: false, alive: false, x: 0, z: 0, hp: 2, helmet: false, crouch: true, state: 'hide',
     next: 'hide', timer: 0, react: 0, aimT: 0, aimK: 0, shots: 0, aiming: false, moving: false, sees: false, hitT: 0,
@@ -160,7 +160,7 @@ export function update(dt, inp) {
   }
   if (S.state !== 'play') return;
   if (S.comboT > 0 && (S.comboT -= dt) <= 0) S.combo = 0;
-  S.t += dt; S.grace = Math.max(0, S.grace - dt);
+  S.explT -= dt; S.t += dt; S.grace = Math.max(0, S.grace - dt);
   S.eye += ((S.crouch ? CFG.eyeCrouch : CFG.eye) - S.eye) * Math.min(1, dt * 10); // agacharse/levantarse suave
   movePlayer(dt, inp);
   updateEnemies(dt);
@@ -271,8 +271,18 @@ function retreat(e) {
 }
 
 // ---------- Granadas y minas ----------
-const boom = (x, z, y = 0.3) => {
+// Explosión propia: mata a los enemigos cercanos con línea de tiro (ignora casco, placa y chaleco); los jefes sufren un impacto.
+function blast(x, z) {
+  const pz = CFG.weapon.pierce; CFG.weapon.pierce = true;
+  for (const e of S.enemies) {
+    if (!e.active || !e.alive || Math.hypot(e.x - x, e.z - z) > 3.4 || blocked(x, 0.5, z, e.x, 1, e.z)) continue;
+    const pt = [e.x, 1, e.z]; damageEnemy(e, false, pt, [0, 1, 0]); if (e.alive && !e.boss) damageEnemy(e, false, pt, [0, 1, 0]);
+  }
+  CFG.weapon.pierce = pz;
+}
+const boom = (x, z, y = 0.3, own = false) => {
   emit('boom', { x, z, y });
+  if (own) { blast(x, z); return; }
   const p = S.player, d = Math.hypot(p.x - x, p.z - z);
   if (d < 3.2 && (d < 1.2 || !blocked(x, 0.5, z, p.x, S.eye - 0.4, p.z))) hurtPlayer(false);
 };
@@ -280,26 +290,48 @@ function throwGrenade(e) {
   const g = S.gren.find((o) => !o.on); if (!g) return;
   const p = S.player; let tx = p.x + (Math.random() - 0.5) * 1.6, tz = p.z + (Math.random() - 0.5) * 1.6;
   if (!free(tx, tz, 0.3)) { const n = nearestWalk(cellOf(tx), cellOf(tz)); if (n) { tx = centerOf(n[0]); tz = centerOf(n[1]); } }
-  Object.assign(g, { on: true, sx: e.x, sz: e.z, x: e.x, z: e.z, tx, tz, t: 0, T: Math.max(0.7, Math.min(1.4, Math.hypot(tx - e.x, tz - e.z) / 9)), y: 1.6 });
+  Object.assign(g, { on: true, own: false, sx: e.x, sz: e.z, x: e.x, z: e.z, tx, tz, t: 0, T: Math.max(0.7, Math.min(1.4, Math.hypot(tx - e.x, tz - e.z) / 9)), y: 1.6 });
   emit('throw', { e, tx, tz, T: g.T });
 }
 function plantMine(e) {
   if (!(e.boss && e.ph === 3) || e.mineT > 0) return;
   const m = S.mines.find((o) => !o.on); if (!m) return;
-  e.mineT = 5; Object.assign(m, { on: true, x: e.x, z: e.z, arm: 1.2 }); emit('mine', { x: m.x, z: m.z });
+  e.mineT = 5; Object.assign(m, { on: true, own: false, x: e.x, z: e.z, arm: 1.2 }); emit('mine', { x: m.x, z: m.z });
 }
 function updateExplosives(dt) {
   for (const g of S.gren) {
     if (!g.on) continue;
     g.t += dt; const u = Math.min(1, g.t / g.T);
     g.x = g.sx + (g.tx - g.sx) * u; g.z = g.sz + (g.tz - g.sz) * u; g.y = Math.max(0.1, 1.6 * (1 - u) + 8.8 * u * (1 - u));
-    if (g.t >= g.T + 1.4) { g.on = false; boom(g.x, g.z); }
+    if (g.t >= g.T + (g.own ? 0.35 : 1.4)) { g.on = false; boom(g.x, g.z, 0.3, g.own); }
   }
   const p = S.player;
   for (const m of S.mines) {
     if (!m.on) continue; m.arm -= dt;
+    if (m.own) { if (m.arm <= 0 && S.enemies.some((e) => e.active && e.alive && Math.hypot(e.x - m.x, e.z - m.z) < 1.3)) { m.on = false; boom(m.x, m.z, 0.3, true); } continue; }
     if (m.arm <= 0 && Math.hypot(p.x - m.x, p.z - m.z) < 0.9) { m.on = false; boom(m.x, m.z); }
   }
+}
+
+// Lanza la granada equipada hacia donde miras (cae donde apunta la mira, con tope de 16 m) o coloca la mina delante de ti.
+export function throwExplosive() {
+  const k = S.explKind;
+  if (S.state !== 'play' || !k || S.explN <= 0 || S.explT > 0) return null;
+  const p = S.player, cp = Math.cos(p.pitch), dx = -Math.sin(p.yaw), dz = -Math.cos(p.yaw);
+  if (k === 'gren') {
+    const g = S.gren.find((o) => !o.on); if (!g) return null;
+    const wall = rayWorld(p.x, S.eye, p.z, dx * cp, Math.sin(p.pitch), dz * cp), floor = p.pitch < -0.02 ? S.eye / Math.tan(-p.pitch) : 16;
+    const d = Math.max(2.2, Math.min(16, wall * cp - 0.6, floor));
+    let tx = p.x + dx * d, tz = p.z + dz * d;
+    if (!free(tx, tz, 0.3)) { const n = nearestWalk(cellOf(tx), cellOf(tz)); if (n) { tx = centerOf(n[0]); tz = centerOf(n[1]); } }
+    const dd = Math.hypot(tx - p.x, tz - p.z);
+    Object.assign(g, { on: true, own: true, sx: p.x + dx * 0.3, sz: p.z + dz * 0.3, x: p.x, z: p.z, tx, tz, t: 0, T: Math.max(0.55, Math.min(1.4, dd / 11)), y: 1.6 });
+  } else {
+    const m = S.mines.find((o) => !o.on); if (!m) return null;
+    let mx = p.x + dx * 1.1, mz = p.z + dz * 1.1; if (!free(mx, mz, 0.3)) { mx = p.x; mz = p.z; }
+    Object.assign(m, { on: true, own: true, x: mx, z: mz, arm: 1 });
+  }
+  S.explN--; S.explT = 0.8; emit('plant', { kind: k }); return k;
 }
 
 function beginAim(e) {

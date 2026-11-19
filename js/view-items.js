@@ -64,7 +64,7 @@ export function createItems(scene, nGren = 4, nMine = 6, camera) {
   return {
     sync(S, time) {
       gren.forEach((o, i) => {
-        const g = S.gren[i], on = g.on; o.g.visible = on; o.ring.visible = o.disc.visible = on;
+        const g = S.gren[i], on = g.on; o.g.visible = on; o.ring.visible = o.disc.visible = on && !g.own;
         if (!on) return;
         o.g.position.set(g.x, g.y, g.z); o.body.rotation.set(time * 9, time * 3, time * 6);
         o.pt -= 0.016; if (o.pt <= 0 && g.t < g.T) { o.pt = 0.04; const p = o.puffs[o.pi++ % o.puffs.length]; p.t = 0; p.pos.set(g.x, g.y, g.z); p.m.visible = true; }
