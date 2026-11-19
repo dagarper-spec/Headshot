@@ -3,23 +3,35 @@
 import * as THREE from 'three';
 import { COS } from './cosmetics.js';
 
-const VS = `attribute float size; attribute vec4 color; varying vec4 vC; uniform float scale;
-void main(){ vC = color; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
-  gl_PointSize = clamp(size * scale / max(-mv.z, 0.05), 0.0, 220.0); }`;
-const FS = `varying vec4 vC;
-void main(){ float r = length(gl_PointCoord - 0.5) * 2.0; float a = 1.0 - smoothstep(0.15, 1.0, r);
-  if (a < 0.01) discard; gl_FragColor = vec4(vC.rgb, vC.a * a); }`;
+const VS = `attribute float size; attribute vec4 color; attribute vec2 sd; varying vec4 vC; varying vec2 vS; uniform float scale;
+void main(){ vC = color; vS = sd; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+  gl_PointSize = clamp(size * scale / max(-mv.z, 0.05), 0.0, 260.0); }`;
+// sd.x = semilla (rotación/ruido), sd.y = forma: 0 humo/fuego irregular, 1 punto duro (chispa, gota, astilla), 2 fogonazo en estrella, 3 destello suave
+const FS = `varying vec4 vC; varying vec2 vS;
+float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }
+void main(){
+  vec2 p = (gl_PointCoord - 0.5) * 2.0; float c = cos(vS.x * 6.283), s = sin(vS.x * 6.283); p = mat2(c, -s, s, c) * p;
+  float r = length(p), a, l = 1.0;
+  if (vS.y < 0.5) { float z = n(p * 2.3 + vS.x * 17.0) * 0.6 + n(p * 5.1 + vS.x * 5.0) * 0.4; // borde irregular, nada de círculo perfecto
+    a = smoothstep(1.0, 0.15, r + (z - 0.5) * 0.95) * (0.55 + 0.45 * z); l = 0.75 + 0.5 * z + 0.15 * p.y; }
+  else if (vS.y < 1.5) a = 1.0 - smoothstep(0.35, 1.0, r);
+  else if (vS.y < 2.5) { float g = atan(p.y, p.x); a = max(exp(-r * r * 7.0), pow(abs(cos(g * 2.5)), 14.0) * (1.0 - r) * 1.1); }
+  else a = exp(-r * r * 3.5) * (1.0 - r);
+  if (a < 0.01) discard; gl_FragColor = vec4(vC.rgb * l, vC.a * a); }`;
 
 // Sistema de partículas: un único Points (1 draw call) con tamaño y alfa por partícula.
 function makeSystem(scene, n, additive, uniforms) {
   const s = { n, i: 0, pos: new Float32Array(n * 3), vel: new Float32Array(n * 3), col: new Float32Array(n * 4), size: new Float32Array(n),
     base: new Float32Array(n * 4), s0: new Float32Array(n), s1: new Float32Array(n), life: new Float32Array(n), max: new Float32Array(n).fill(1),
-    grav: new Float32Array(n), drag: new Float32Array(n), type: new Uint8Array(n) };
+    grav: new Float32Array(n), drag: new Float32Array(n), type: new Uint8Array(n), sd: new Float32Array(n * 2) };
   for (let i = 0; i < n; i++) s.pos[i * 3 + 1] = -100;
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(s.pos, 3));
   g.setAttribute('color', new THREE.BufferAttribute(s.col, 4));
   g.setAttribute('size', new THREE.BufferAttribute(s.size, 1));
+  g.setAttribute('sd', new THREE.BufferAttribute(s.sd, 2));
   s.geo = g;
   s.pts = new THREE.Points(g, new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS, uniforms, transparent: true, depthWrite: false,
     blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending }));
@@ -38,17 +50,18 @@ const blob = (x, cx, cy, r, a) => { const g = x.createRadialGradient(cx, cy, 0, 
 
 export function createFx(scene, camera, view) {
   const U = { scale: { value: 800 } };
-  const spark = makeSystem(scene, 200, true, U);   // aditivo: chispas, fogonazo
+  const spark = makeSystem(scene, 500, true, U);   // aditivo: chispas, fogonazo
   const dust = makeSystem(scene, 800, false, U);   // normal: humo, polvo, astillas, sangre
   const fx = { kick: 0, shake: 0, flashT: 0, q: 1, blood: 1, onTink: null };
 
   // Emite una partícula en el sistema s. type: 0 normal, 1 escombro que rebota, 2 gota de sangre (deja mancha al caer)
-  const em = (s, x, y, z, vx, vy, vz, s0, s1, life, r, g, b, a, grav = 0, drag = 0, type = 0) => {
+  const em = (s, x, y, z, vx, vy, vz, s0, s1, life, r, g, b, a, grav = 0, drag = 0, type = 0, shape = -1) => {
     const i = s.i; s.i = (s.i + 1) % s.n;
     s.pos[i * 3] = x; s.pos[i * 3 + 1] = y; s.pos[i * 3 + 2] = z;
     s.vel[i * 3] = vx; s.vel[i * 3 + 1] = vy; s.vel[i * 3 + 2] = vz;
     s.base[i * 4] = r; s.base[i * 4 + 1] = g; s.base[i * 4 + 2] = b; s.base[i * 4 + 3] = a;
     s.s0[i] = s0; s.s1[i] = s1; s.life[i] = s.max[i] = life; s.grav[i] = grav; s.drag[i] = drag; s.type[i] = type;
+    s.sd[i * 2] = Math.random(); s.sd[i * 2 + 1] = shape >= 0 ? shape : (s === spark || s0 < 0.04 ? 1 : 0); // chispas y gotas = puntos duros; el resto, humo irregular
   };
   const rnd = (a = 1) => (Math.random() - 0.5) * a;
   const cnt = (n) => Math.max(1, Math.round(n * fx.q));
@@ -113,9 +126,10 @@ export function createFx(scene, camera, view) {
   // Fogonazo + humo en `p` apuntando a `d` (vector unitario). strong: arma del jugador.
   fx.muzzle = (p, d, strong) => {
     const fc = strong ? COS.flash : [4, 2.8, 1.2], f2 = fc.map((v) => v * 0.75); if (strong) flash.color.setHex(COS.light);
-    em(spark, p.x, p.y, p.z, 0, 0, 0, strong ? 0.34 : 0.22, 0.05, 0.05, fc[0], fc[1], fc[2], 1);
+    em(spark, p.x, p.y, p.z, 0, 0, 0, strong ? 0.42 : 0.28, 0.08, 0.06, fc[0], fc[1], fc[2], 1, 0, 0, 0, 2);
+    em(spark, p.x, p.y, p.z, 0, 0, 0, strong ? 0.5 : 0.3, 0.2, 0.08, fc[0] * 0.5, fc[1] * 0.4, fc[2] * 0.3, 0.8, 0, 0, 0, 3);
     for (let k = 0; k < cnt(strong ? 8 : 5); k++) { const s = 5 + Math.random() * 9; em(spark, p.x, p.y, p.z, d.x * s + rnd(3), d.y * s + rnd(3), d.z * s + rnd(3), 0.02, 0.005, 0.07 + Math.random() * 0.08, f2[0], f2[1], f2[2], 1, 2, 0.5); }
-    for (let k = 0; k < cnt(strong ? 4 : 3); k++) em(dust, p.x, p.y, p.z, d.x * 0.8 + rnd(0.5), 0.35 + Math.random() * 0.3, d.z * 0.8 + rnd(0.5), 0.08, 0.45, 0.8 + Math.random() * 0.5, 0.6, 0.6, 0.6, 0.22, 0, 1.6);
+    for (let k = 0; k < cnt(strong ? 4 : 3); k++) em(dust, p.x, p.y, p.z, d.x * 0.8 + rnd(0.5), 0.35 + Math.random() * 0.3, d.z * 0.8 + rnd(0.5), 0.08, 0.55, 0.9 + Math.random() * 0.6, 0.62, 0.62, 0.62, 0.2, -0.25, 1.4);
   };
 
   // Disparo: trazador desde `from` (enemigo) o desde la boca del arma (jugador) hasta `end`.
@@ -174,22 +188,25 @@ export function createFx(scene, camera, view) {
   // Limpia los decales al empezar un nivel.
   // Explosión de granada/mina: bola de fuego, chispas, humo y sacudida según la distancia a la cámara.
   const bl = new THREE.PointLight(0xff9040, 0, 14, 2); scene.add(bl); let blT = 0;
-  const flashM = new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 3.5, 1.2), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-  const wave = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.6, 1), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), flashM); wave.visible = ball.visible = false; scene.add(wave, ball); let wvT = 9;
   fx.boom = (x, y, z) => {
-    wvT = 0; wave.position.set(x, 0.08, z); ball.position.set(x, y + 0.5, z); wave.visible = ball.visible = true;
-    for (let i = 0; i < cnt(40); i++) { const a = Math.random() * 6.283, v = 2 + Math.random() * 7; em(spark, x, y, z, Math.cos(a) * v, 1 + Math.random() * 6, Math.sin(a) * v, 0.09, 0.02, 0.5 + Math.random() * 0.4, 5, 2.2, 0.6, 1, 14, 1); }
-    for (let i = 0; i < cnt(26); i++) { const a = Math.random() * 6.283, v = Math.random() * 3.5; em(dust, x, y + 0.2, z, Math.cos(a) * v, 0.6 + Math.random() * 2.5, Math.sin(a) * v, 0.35, 1.5, 1.4 + Math.random(), 0.18, 0.16, 0.15, 0.7, -0.4, 1.4); }
-    for (let i = 0; i < cnt(10); i++) em(spark, x + rnd(0.5), y + 0.2, z + rnd(0.5), rnd(2), 0.5 + Math.random(), rnd(2), 0.9, 0.3, 0.25, 6, 3, 0.9, 1, 0, 3);
-    blT = 0.25; bl.position.set(x, y + 0.8, z);
+    em(spark, x, y + 0.5, z, 0, 0, 0, 4.2, 1.2, 0.16, 6, 4, 2, 1, 0, 0, 0, 3); // destello inicial
+    for (let i = 0; i < cnt(16); i++) { const a = Math.random() * 6.283, v = Math.random() * 2.6; // bola de fuego: bocanadas aditivas naranjas
+      em(spark, x + rnd(0.4), y + 0.3 + Math.random() * 0.5, z + rnd(0.4), Math.cos(a) * v, 0.8 + Math.random() * 2.2, Math.sin(a) * v, 0.7, 2.6 + Math.random() * 1.0, 0.55 + Math.random() * 0.5, 2.6, 1.15, 0.2, 0.9, -0.6, 2.2, 0, 0); }
+    for (let i = 0; i < cnt(26); i++) { const a = Math.random() * 6.283, v = Math.random() * 2.2; // humo oscuro que sube y se ensancha despacio
+      em(dust, x + rnd(0.6), y + 0.4, z + rnd(0.6), Math.cos(a) * v, 1.2 + Math.random() * 2.2, Math.sin(a) * v, 0.6, 2.6 + Math.random() * 1.4, 2.2 + Math.random() * 1.6, 0.3, 0.27, 0.24, 0.65, -0.5, 1.1, 0, 0); }
+    for (let i = 0; i < cnt(16); i++) { const a = (i / 16) * 6.283 + rnd(0.3), v = 5 + Math.random() * 4; // onda de polvo a ras de suelo
+      em(dust, x, 0.15, z, Math.cos(a) * v, 0.2, Math.sin(a) * v, 0.5, 1.8, 0.8 + Math.random() * 0.4, 0.6, 0.55, 0.48, 0.5, 0, 3.2, 0, 0); }
+    for (let i = 0; i < cnt(44); i++) { const a = Math.random() * 6.283, v = 2 + Math.random() * 9; // chispas y metralla incandescente
+      em(spark, x, y + 0.2, z, Math.cos(a) * v, 1 + Math.random() * 7, Math.sin(a) * v, 0.07, 0.015, 0.5 + Math.random() * 0.6, 5, 2.4, 0.7, 1, 14, 0.8); }
+    for (let i = 0; i < cnt(10); i++) { const a = Math.random() * 6.283, v = 2 + Math.random() * 5; // escombros que rebotan
+      em(dust, x, y + 0.2, z, Math.cos(a) * v, 2 + Math.random() * 5, Math.sin(a) * v, 0.03, 0.03, 1.2, 0.3, 0.28, 0.25, 1, 12, 0.3, 1, 1); }
+    blT = 0.3; bl.position.set(x, y + 0.8, z);
     const d = Math.hypot(camera.position.x - x, camera.position.z - z); fx.shake = Math.max(fx.shake, Math.min(1.6, 9 / (d + 2)));
   };
   fx.clear = () => { for (const m of [...holes, ...splats, ...pools]) { m.visible = false; m.userData.grow = -1; } for (const c of C) { c.life = 0; c.p.y = -50; } for (const s of [spark, dust]) s.life.fill(0); };
-  fx.setQuality = (q) => { fx.q = q; };
+  fx.setQuality = (q) => { fx.q = q; }; fx.sys = [spark, dust]; // expuesto para depuración
 
   fx.update = (dt) => {
-    if (wvT < 0.6) { wvT += dt; const k = wvT / 0.6; wave.scale.setScalar(0.5 + 5.5 * (1 - Math.pow(1 - k, 3))); wave.material.opacity = 0.8 * (1 - k); ball.scale.setScalar(0.4 + 1.6 * Math.min(1, k * 3)); flashM.opacity = Math.max(0, 1 - k * 2.5); if (k >= 1) wave.visible = ball.visible = false; }
     U.scale.value = (view.viewH || innerHeight) / (2 * Math.tan((camera.fov * Math.PI) / 360));
     for (const s of [spark, dust]) {
       const { pos, vel, life, max, col, size, base, s0, s1, grav, drag, type } = s;
@@ -197,14 +214,15 @@ export function createFx(scene, camera, view) {
         if (life[i] <= 0) { col[i * 4 + 3] = 0; continue; }
         life[i] -= dt;
         const k = 1 - Math.max(0, life[i] / max[i]), j = i * 3, d = Math.max(0, 1 - drag[i] * dt);
+        if (!type[i] && grav[i] <= 0) { vel[j] += rnd(2.4) * dt * 8; vel[j + 2] += rnd(2.4) * dt * 8; } // el humo y el fuego flotan con turbulencia
         vel[j] *= d; vel[j + 1] = vel[j + 1] * d - grav[i] * dt; vel[j + 2] *= d;
         pos[j] += vel[j] * dt; pos[j + 1] += vel[j + 1] * dt; pos[j + 2] += vel[j + 2] * dt;
         if (pos[j + 1] < 0.015 && type[i]) {
           if (type[i] === 2) { fx.splat([pos[j], 0, pos[j + 2]], [0, 1, 0], 0.1 + Math.random() * 0.12); life[i] = 0; continue; }
           pos[j + 1] = 0.015; vel[j + 1] *= -0.3; vel[j] *= 0.6; vel[j + 2] *= 0.6;
         }
-        const a = base[i * 4 + 3] * (1 - k) * Math.min(1, k * 10 + (type[i] === 2 ? 1 : 0));
-        col[i * 4] = base[i * 4]; col[i * 4 + 1] = base[i * 4 + 1]; col[i * 4 + 2] = base[i * 4 + 2]; col[i * 4 + 3] = a;
+        const a = base[i * 4 + 3] * (1 - k) * Math.min(1, k * 10 + (type[i] === 2 ? 1 : 0)), hot = s === spark;
+        col[i * 4] = base[i * 4]; col[i * 4 + 1] = base[i * 4 + 1] * (hot ? 1 - 0.55 * k : 1); col[i * 4 + 2] = base[i * 4 + 2] * (hot ? 1 - 0.9 * k : 1); col[i * 4 + 3] = a; // las chispas se enfrían: blanco → naranja → rojo
         size[i] = s0[i] + (s1[i] - s0[i]) * k;
       }
       s.geo.attributes.position.needsUpdate = s.geo.attributes.color.needsUpdate = s.geo.attributes.size.needsUpdate = true;
@@ -231,7 +249,7 @@ export function createFx(scene, camera, view) {
       t.userData.life -= dt; t.material.opacity = Math.max(0, t.userData.life / 0.07);
       if (t.userData.life <= 0) t.visible = false;
     }
-    blT -= dt; bl.intensity = blT > 0 ? 260 * blT / 0.25 : 0;
+    blT -= dt; bl.intensity = blT > 0 ? 260 * blT / 0.3 : 0;
     fx.flashT -= dt; flash.intensity = fx.flashT > 0 ? 30 : 0;
     fx.kick = Math.max(0, fx.kick - dt * 9); fx.shake = Math.max(0, fx.shake - dt * 1.4);
   };
