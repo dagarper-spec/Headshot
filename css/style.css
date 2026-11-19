@@ -301,3 +301,16 @@ body.touch.sniper #touch #bZoom{left:calc(var(--sl) + var(--pad)/2 - var(--b) - 
   #equip .mbtns .big.play::before{content:""}
   #menu .cover .tag{font-size:11px;letter-spacing:.18em}
 }
+
+/* Pantallas desplazables: nada se encoge ni queda cortado abajo */
+.ov>*{flex-shrink:0}
+#shop,#levels,#endless,#equip,#over{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+@media (orientation:landscape) and (max-height:520px){
+  #over{justify-content:safe center;gap:8px}#over h1{font-size:30px}#over .sub{font-size:13px;margin:0}
+  #over .mbtns{flex-direction:row;flex-wrap:wrap;justify-content:center;width:min(94vw,560px);gap:8px}
+  #over .mbtns .big{width:auto;flex:1 1 40%;font-size:14px;padding:9px 10px;animation:none}
+  #over .mbtns .big.play::before{content:""}
+  #shop h1,#levels h1{font-size:26px}
+  body.touch #ammo{left:50%;right:auto;transform:translateX(-50%);bottom:max(10px,env(safe-area-inset-bottom));opacity:.9}
+  body.touch #mag{font-size:26px}body.touch #rl{font-size:11px}
+}
