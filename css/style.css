@@ -272,3 +272,32 @@ body.touch #ammo{right:auto;left:50%;transform:translateX(-50%);text-align:cente
 body.touch.sniper #touch #bZoom{left:calc(var(--sl) + var(--pad)/2 - var(--b) - 4px)}
 #bZl{left:calc(var(--sl) + var(--pad)/2 + 4px)}
 .eqc{position:relative}.bdg{position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:50%;background:#ffd75e;color:#2a1100;font-style:normal;font-weight:700;font-size:13px;line-height:22px;text-align:center}
+
+/* Menú minimalista: ajustes tras engranaje, fila compacta */
+.gear{position:absolute;top:max(10px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:2;width:44px;height:44px;border-radius:50%;border:1px solid #ffffff33;background:#0008;color:#ddd;font-size:24px;line-height:1;cursor:pointer;pointer-events:auto}
+.row3{display:flex;gap:8px;width:100%}.row3 .big{flex:1;width:auto;padding:12px 4px;font-size:13px;letter-spacing:.06em}
+.row3 .big.inf::before{content:"\221E\00a0"}
+#cfg .opts{display:flex;flex-direction:column;gap:12px;align-items:stretch;width:min(86vw,320px)}
+#cfg .q{display:flex;justify-content:space-between;align-items:center;gap:12px;color:#ccc}
+#cfg .big{width:min(86vw,320px)}
+.ov{background:#0b0e13f2}
+#menu{background:radial-gradient(#0b0e13dd,#000f)}
+@media (orientation:landscape) and (max-height:520px){
+  #menu{flex-direction:row;justify-content:space-evenly;gap:20px;padding:8px 16px}
+  #menu .cover{width:46%;padding:0}#menu .mbtns{width:min(42vw,340px)}
+  .ov h1{font-size:clamp(26px,8vh,44px)}
+  #cfg{gap:8px}
+  #endless,#levels,#shop{justify-content:flex-start;padding:10px 16px}
+  #endless .mbtns,#endBack{width:min(60vw,260px)}
+  #equip .mbtns{flex-direction:row;width:100%;justify-content:center;padding:8px 0;gap:10px}
+  #equip .mbtns .big{width:auto;flex:1;max-width:240px}
+  #over{gap:6px}#over .mbtns{flex-direction:row;flex-wrap:wrap;justify-content:center;width:auto}#over .mbtns .big{width:auto;padding:8px 14px}
+}
+@media (orientation:landscape) and (max-height:520px){
+  #menu,#cfg{background:#0b0e13}
+  #equip{padding:6px 14px 0}#equip h1{font-size:26px}#equip .sub,#equip .tag{margin:0;font-size:12px}
+  #equip .mbtns{background:#0a0d12;padding:6px 0;border-top:1px solid #ffffff1a}
+  #equip .mbtns .big,#equip .mbtns .big.play{font-size:14px;padding:8px 10px;width:auto;flex:1;max-width:220px;animation:none}
+  #equip .mbtns .big.play::before{content:""}
+  #menu .cover .tag{font-size:11px;letter-spacing:.18em}
+}

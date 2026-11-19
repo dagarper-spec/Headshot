@@ -44,16 +44,24 @@
 </div>
 
 <div id="menu" class="ov">
+  <button id="cfgBtn" class="gear" aria-label="Ajustes">&#9881;</button>
   <div class="cover"><div class="scope"><i></i><i></i></div>
-    <h1 id="mtitle">HEADSHOT</h1><p class="tag">UN DISPARO · UNA CABEZA</p></div>
-  <p id="best" class="best"></p>
+    <h1 id="mtitle">HEADSHOT</h1><p class="tag">UN DISPARO · UNA CABEZA</p>
+    <p id="best" class="best"></p></div>
   <div class="mbtns">
     <button id="start" class="big play" disabled>Cargando…</button>
     <button id="cont" class="big alt hide"></button>
-    <button id="endBtn" class="big alt inf">Modo infinito</button>
+    <div class="row3">
+      <button id="endBtn" class="big alt inf">Infinito</button>
+      <button id="lvlBtn" class="big alt">Niveles</button>
+      <button id="menuShop" class="big alt hide">Tienda</button>
+    </div>
     <button id="restart" class="big alt hide">Reiniciar nivel</button>
-    <div class="row2"><button id="lvlBtn" class="big alt">Niveles</button><button id="menuShop" class="big alt hide">Tienda</button></div>
   </div>
+</div>
+
+<div id="cfg" class="ov hide">
+  <h1>AJUSTES</h1>
   <div class="opts">
     <label class="q">Calidad
       <select id="quality">
@@ -65,6 +73,7 @@
     <label class="q">Música <select id="music"><option value="1">Sí</option><option value="0">No</option></select></label>
   </div>
   <button id="resetAll" class="big alt small">Reiniciar todo el progreso</button>
+  <button id="cfgBack" class="big alt">Volver</button>
 </div>
 
 <div id="endless" class="ov hide">

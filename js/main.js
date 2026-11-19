@@ -179,6 +179,7 @@ async function boot() {
   };
   const openLevels = (from) => { lvFrom = from; ui.hide(from); renderLevels(data, (i) => { ui.hide('levels'); begin(i); }); ui.show('levels'); };
   let lvFrom = 'menu';
+  $('cfgBtn').onclick = () => { ui.hide('menu'); ui.show('cfg'); }; $('cfgBack').onclick = () => { ui.hide('cfg'); ui.show('menu'); };
   $('lvlBtn').onclick = () => openLevels('menu'); $('lvlOver').onclick = () => openLevels('over');
   $('lvlBack').onclick = () => { ui.hide('levels'); ui.show(lvFrom); };
   $('again').onclick = () => S.endless ? begin(0, S.endless.zone) : begin(S.state === 'win' && unlocked(data, S.level + 1) && S.level + 1 < LEVELS.length ? S.level + 1 : S.level); // victoria -> siguiente; derrota -> reintentar
