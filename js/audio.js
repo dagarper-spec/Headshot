@@ -76,19 +76,19 @@ export const sfx = {
   },
   // Explosión (graves + ruido + eco), pitido de granada, cofre, blindaje del jefe y cambio de fase
   boom() { noise(0.7, 1, 2500, 60, 'lowpass', 0.7); tone(90, 28, 0.6, 'sine', 1, 0.4); noise(0.1, 0.8, 8000, 1500, 'highpass', 0.3); },
-  warn(k = 0) { tone(75 + 25 * k, 45, 0.16, 'sine', 0.35 + 0.3 * k); noise(0.07, 0.12 + 0.12 * k, 600, 150, 'lowpass'); }, // latido grave y sordo que acelera: sin tonos agudos
+  warn(k = 0) { tone(210 + 90 * k, 120, 0.13, 'sine', 0.8 + 0.5 * k); tone(1100 + 500 * k, 500, 0.04, 'triangle', 0.2 + 0.15 * k); noise(0.06, 0.4 + 0.3 * k, 1200, 300, 'lowpass'); }, // golpe sordo audible en altavoz de móvil, sin pitido
   beep() { tone(1500, 1500, 0.05, 'square', 0.12); },
   pin() { noise(0.04, 0.3, 6000, 3000, 'highpass'); tone(2400, 1800, 0.05, 'triangle', 0.15, 0, 0.05); },
   chest() { tone(660, 990, 0.12, 'triangle', 0.25); tone(990, 1320, 0.18, 'triangle', 0.25, 0, 0.1); noise(0.12, 0.25, 3000, 800, 'bandpass'); },
   armor() { ring([900, 1500], 0.25, 0.2); noise(0.04, 0.4, 5000, 1500, 'highpass'); },
   phase() { tone(160, 60, 0.7, 'sawtooth', 0.5, 0.4); tone(120, 50, 0.9, 'square', 0.3, 0.4, 0.1); },
-  wave() { noise(1.1, 0.22, 200, 1400, 'bandpass', 0.5); tone(70, 40, 0.9, 'sine', 0.45, 0.3); noise(0.25, 0.3, 1800, 300, 'lowpass', 0.4, 0.05); }, // inicio de misión: soplo grave con eco, sin pitido
+  wave() { noise(1.2, 0.7, 300, 2200, 'bandpass', 0.5); tone(140, 70, 0.9, 'sine', 0.9, 0.3); tone(280, 140, 0.6, 'triangle', 0.25, 0.3, 0.05); noise(0.3, 0.8, 2500, 400, 'lowpass', 0.4, 0.05); }, // inicio de misión: soplo con golpe grave y eco
   up() { tone(500, 900, 0.15, 'triangle', 0.25); setTimeout(() => tone(750, 1200, 0.2, 'triangle', 0.25), 110); },
 };
 
 // ---- Música: MP3 de menú y MP3 de combate (muy bajito durante la partida). ----
 const song = typeof Audio !== 'undefined' ? new Audio('assets/audio/musica.mp3') : null;
-let musicOn = true, duck = 0, mode = 'menu';
+let musicOn = true, duck = 0, mode = 'menu', mvol = 1;
 const fight = typeof Audio !== 'undefined' ? new Audio('assets/audio/combate.mp3') : null;
 const MUSIC_VOL = 0.09, FIGHT_VOL = 0.05;
 for (const a of [song, fight]) if (a) { a.loop = true; a.preload = 'auto'; a.volume = 0; }
@@ -116,6 +116,7 @@ export const music = {
   play() { apply(); },
   pause() { if (song) song.pause(); if (fight) fight.pause(); },
   setOn(v) { musicOn = v; apply(); },
+  setVol(k) { mvol = k; }, // 0..2 (1 = nivel por defecto)
   duck() { duck = 1; },
-  update(dt) { duck = Math.max(0, duck - dt * 1.6); if (song) song.volume = MUSIC_VOL * (1 - 0.55 * duck); if (fight) fight.volume = FIGHT_VOL * (1 - 0.55 * duck); },
+  update(dt) { duck = Math.max(0, duck - dt * 1.6); if (song) song.volume = Math.min(1, MUSIC_VOL * mvol * (1 - 0.55 * duck)); if (fight) fight.volume = Math.min(1, FIGHT_VOL * mvol * (1 - 0.55 * duck)); },
 };

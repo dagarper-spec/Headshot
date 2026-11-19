@@ -137,7 +137,7 @@ body.touch #ammo{right:max(20px,env(safe-area-inset-right));bottom:calc(max(18px
 .rrow.ko .rbar i{background:linear-gradient(90deg,#b3261e,#ff7a6a)}
 @keyframes rgrow{to{width:var(--w)}}@keyframes rfade{to{opacity:1}}
 .rmoney{display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0;animation:rfade .5s ease 1.2s forwards}
-.rcoin{width:clamp(110px,30vw,140px);height:clamp(110px,30vw,140px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:clamp(32px,9vw,44px);color:#fff3c0;background:radial-gradient(circle at 35% 30%,#ffcf4a,#c98a12 70%,#8a5a06);box-shadow:0 0 24px #ffb30088,inset 0 0 0 5px #ffe38a55,inset 0 -6px 12px #0005;text-shadow:0 2px 0 #7a4a00}
+.rcoin{width:clamp(110px,30vw,140px);height:clamp(110px,30vw,140px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:clamp(32px,9vw,44px);color:#fff;background:radial-gradient(circle at 35% 30%,#ffcf4a,#c98a12 70%,#8a5a06);box-shadow:0 0 24px #ffb30088,inset 0 0 0 5px #ffe38a55,inset 0 -6px 12px #0005;text-shadow:0 2px 0 #7a4a00}
 .rdet{font-size:13px;color:#cdd6df}.rtot{font-size:18px;color:#ffd75e}.rnote{font-size:14px;color:#ff9a7a}
 @media (max-height:480px){.rs{font-size:46px}.res{gap:6px}.rcoin{width:84px;height:84px;font-size:28px}}
 
@@ -313,4 +313,10 @@ body.touch.sniper #touch #bZoom{left:calc(var(--sl) + var(--pad)/2 - var(--b) - 
   #shop h1,#levels h1{font-size:26px}
   body.touch #ammo{left:50%;right:auto;transform:translateX(-50%);bottom:max(10px,env(safe-area-inset-bottom));opacity:.9}
   body.touch #mag{font-size:26px}body.touch #rl{font-size:11px}
+}
+
+#cfg input[type=range]{width:55%;accent-color:#ffb347}
+/* Pausa en horizontal: junto al cronómetro, sin tapar marcador ni botones */
+@media (orientation:landscape) and (max-height:520px){
+  #bPause{top:max(8px,env(safe-area-inset-top));right:calc(max(16px,env(safe-area-inset-right)) + 118px);width:38px;height:38px}
 }

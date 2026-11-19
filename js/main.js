@@ -118,8 +118,9 @@ async function boot() {
     tier = sel.value === 'auto' ? autoTier() : sel.value; applyTier();
   };
   const bl = $('blood'); bl.value = data.blood; bl.onchange = () => { data.blood = bl.value; writeSave(data); fx.setBlood(data.blood); };
-  const mus = $('music'); mus.value = data.music ? '1' : '0'; music.setOn(false); // empieza al pulsar Jugar (gesto del usuario)
-  mus.onchange = () => { data.music = mus.value === '1'; writeSave(data); music.setOn(data.music); };
+  const mus = $('music'); mus.value = data.musicVol; music.setVol(data.musicVol / 50); music.setOn(false); // empieza al pulsar Jugar (gesto del usuario)
+  mus.oninput = () => { data.musicVol = +mus.value; data.music = data.musicVol > 0; music.setVol(data.musicVol / 50); music.setOn(data.music); };
+  mus.onchange = () => writeSave(data);
   // ----- Tienda -----
   // Carga bajo demanda el modelo del arma equipada (los GLB pesan ~1,3 MB cada uno).
   const ensureWeapon = async (k, show = true) => { if (k && k !== 'pistol' && !view.hasWeapon(k)) { const g = await loadFps(CFG.models.dir, k); if (g) view.addWeapon(k, g); } if (show) view.setWeapon(k || 'pistol'); };
@@ -216,7 +217,7 @@ async function boot() {
     if (!rsT) { ra.textContent = '¿Seguro? Pulsa otra vez'; rsT = setTimeout(() => { rsT = 0; ra.textContent = 'Reiniciar todo el progreso'; }, 3500); return; }
     clearTimeout(rsT); rsT = 0; ra.textContent = 'Progreso borrado';
     for (const k of Object.keys(data)) delete data[k]; Object.assign(data, freshSave()); writeSave(data); applyUpgrades(data); syncCont(false);
-    $('quality').value = data.quality; $('blood').value = data.blood; $('music').value = '1'; fx.setBlood(data.blood); music.setOn(true);
+    $('quality').value = data.quality; $('blood').value = data.blood; $('music').value = data.musicVol; music.setVol(data.musicVol / 50); fx.setBlood(data.blood); music.setOn(true);
   };
   ui.menu('HEADSHOT', 'Jugar', ''); syncCont(false);
 
