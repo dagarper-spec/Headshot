@@ -10,7 +10,7 @@ export const ITEMS = [
   { id: 'mag',  kind: 'up', name: 'Cargador ampliado', desc: ['Cargador de 7 balas', 'Cargador de 8 balas'], prices: [450, 900] },
   { id: 'fast', kind: 'up', name: 'Recarga rápida',    desc: ['Recarga un 15 % más rápida', 'Recarga un 30 % más rápida'], prices: [360, 720] },
   { id: 'stab', kind: 'up', name: 'Estabilidad',       desc: ['Un 20 % menos de dispersión', 'Un 35 % menos de dispersión'], prices: [420, 800] },
-  { id: 'vest', kind: 'up', name: 'Chaleco',           desc: ['+1 vida (3 en total)'], prices: [1200], needBoss: true },
+  { id: 'vest', kind: 'up', name: 'Chaleco blindado',  desc: ['Blindaje 1: absorbe 1 tiro al cuerpo', 'Blindaje 2: absorbe 2 tiros', 'Blindaje 3: absorbe 3 tiros'], prices: [1200, 2000, 3000], needBoss: true },
   { id: 'cMed',  kind: 'cons', name: 'Botiquín',         desc: ['+1 vida en el próximo nivel'], price: 150 },
   { id: 'cVest', kind: 'cons', name: 'Chaleco temporal', desc: ['Absorbe 1 tiro al cuerpo'], price: 200 },
   { id: 'gRed',   kind: 'glove', name: 'Guantes rojos',   desc: ['Cosmético'], price: 250, color: 0x8e1b1b },
@@ -37,15 +37,23 @@ export function reward(level, t) {
 }
 
 // Aplica las mejoras compradas a la configuración del juego.
-export function applyUpgrades(d) {
-  const lv = (id) => +d.items[id] || 0;
-  const wk = d.weapon && d.items[d.weapon] && WEAPONS[d.weapon] ? d.weapon : 'pistol', W = WEAPONS[wk]; // arma equipada
+// Arma principal y secundaria equipadas (la secundaria puede ser null).
+export const loadout = (d) => { const own = (k) => k && WEAPONS[k] && (k === 'pistol' || d.items[k]), p = own(d.weapon) ? d.weapon : 'pistol'; return [p, own(d.weapon2) && d.weapon2 !== p ? d.weapon2 : null]; };
+
+// Pone en CFG las estadísticas del arma wk (con las mejoras de cargador/recarga).
+export function applyWeapon(d, wk) {
+  const lv = (id) => +d.items[id] || 0, W = WEAPONS[wk];
   Object.assign(CFG.weapon, { kind: wk, mag: W.mag + lv('mag'), rate: W.rate, reload: W.reload * (1 - 0.15 * lv('fast')), pierce: W.pierce, auto: W.auto, spreadK: W.spreadK, zoomK: W.zoomK, sens: W.sens, sil: !!W.sil });
   COS.rev = !W.shell; COS.shk = W.shk;
+}
+
+export function applyUpgrades(d) {
+  const lv = (id) => +d.items[id] || 0, wk = loadout(d)[0];
+  applyWeapon(d, wk);
   window.headshot && window.headshot.view && window.headshot.view.setWeapon(wk);
   const h = HELMETS[d.helmet]; CFG.player.helmet = h && d.items[d.helmet] ? h.hits : 0;
   CFG.weapon.stab = 1 - [0, 0.2, 0.35][lv('stab')];
-  CFG.player.hp = BASE.hp + (lv('vest') ? 1 : 0);
+  CFG.player.hp = BASE.hp; CFG.player.armor = lv('vest'); // el chaleco da puntos de blindaje, no vida
   const g = ITEMS.find((i) => i.id === d.glove); setGlove(g ? g.color : 0);
   const sk = ITEMS.find((i) => i.id === d.skin); setSkin(sk || null);
   const fl = ITEMS.find((i) => i.id === d.flash); COS.flash = fl ? fl.rgb : [4, 2.8, 1.2]; COS.light = fl ? fl.color : 0xffa860;

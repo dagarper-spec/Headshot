@@ -209,13 +209,13 @@ export function createView(canvas, tier, model, fpsData, props) {
     setWeapon(k) { weapon = WP[k] ? k : 'pistol'; wasRl = false; for (const n in WP) WP[n].gun.visible = n === weapon; },
     addWeapon(kind, gltf) { addW(kind, gltf); },
     hasWeapon: (k) => !!WP[k],
-    pk: 0, warn: [], // enemigos que te apuntan: {a: ángulo en pantalla, k: carga 0..1} (lo lee la interfaz)
+    pk: 0, zl: 1, warn: [], // enemigos que te apuntan: {a: ángulo en pantalla, k: carga 0..1} (lo lee la interfaz)
     scene, camera,
     // rp: progreso de recarga 0..1 (o -1); fx aporta retroceso y temblor.
     sync(S, time, dt, fx, rp) {
       const p = S.player, bob = Math.sin(time * 9) * Math.min(p.speed / 5, 1);
       zk += ((S.zoom ? 1 : 0) - zk) * Math.min(1, dt * 12);
-      view.pk = Math.max(0, view.pk - dt * 5); const f = 75 - (weapon === 'sniper' ? 58 : 33) * zk - view.pk * 9; // pk: golpe de FOV al matar
+      view.pk = Math.max(0, view.pk - dt * 5); const f = 75 - (weapon === 'sniper' ? (view.zl ? 58 : 45) : 33) * zk - view.pk * 9; // pk: golpe de FOV al matar
       if (Math.abs(camera.fov - f) > 0.05) { camera.fov = f; camera.updateProjectionMatrix(); }
       const hurt = S.hp < S.maxHp, sway = hurt ? 0.0035 : 0.0012; // herido = puntería temblorosa
       const dead = S.state === 'over' ? Math.min(S.deathT, 0.7) : 0;
@@ -227,7 +227,8 @@ export function createView(canvas, tier, model, fpsData, props) {
       const w = WP[weapon], { fpsv, gun, GB, GZY } = w;
       if (fpsv) {
         if (rp >= 0 && !wasRl) fpsv.reload(CFG.weapon.reload); wasRl = rp >= 0; fpsv.update(dt, rp);
-        gun.position.set(GB[0] * (1 - zk) + bob * 0.003, GB[1] + (GZY - GB[1]) * zk + bob * 0.004 - rl * 0.03, GB[2] + fx.kick * 0.05 * w.k + 0.03 * zk);
+        const ax = Math.max(0.55, Math.min(1, camera.aspect / 1.5)); // en pantallas verticales el arma se acerca al centro
+        gun.position.set(GB[0] * ax * (1 - zk) + bob * 0.003, GB[1] + (GZY - GB[1]) * zk + bob * 0.004 - rl * 0.03, GB[2] + fx.kick * 0.05 * w.k + 0.03 * zk);
         gun.rotation.set(fx.kick * 0.18 * w.k - rl * 0.25, 0, rl * 0.3);
         if (weapon === 'sniper') gun.visible = zk < 0.55; // con el visor (zoom) se oculta el arma para ver a través de la mira
       } else {

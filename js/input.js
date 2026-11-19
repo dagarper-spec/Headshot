@@ -1,5 +1,6 @@
 // Entrada unificada: teclado + ratón (pointer lock) en escritorio, joystick + arrastre táctil en móvil.
-export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false, zoom: false, crouch: false, pulse: 0, rHeld: () => false };
+export const input = { mx: 0, mz: 0, dx: 0, dy: 0, rx: 0, ry: 0, turn: 0, fire: false, reload: false, touch: false, noLock: false, zoom: false, crouch: false, pulse: 0, rHeld: () => false, swap: false, zl: 1 };
+const zlLabel = () => { const b = document.getElementById('bZl'); if (b) b.innerHTML = 'ZOOM<br>' + (input.zl ? 2 : 1); };
 
 const keys = {};
 const pads = { L: { id: -1, x: 0, y: 0, el: null }, R: { id: -1, x: 0, y: 0, el: null } }; // ruletas táctiles
@@ -18,6 +19,8 @@ export function initInput(canvas) {
   addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'KeyR') input.reload = true;
+    if (e.code === 'KeyQ' && !e.repeat) input.swap = true;
+    if (e.code === 'KeyX' && !e.repeat) { input.zl ^= 1; zlLabel(); }
     if (e.code === 'KeyC' && !e.repeat) toggleCrouch();
     if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   });
@@ -35,6 +38,7 @@ export function initInput(canvas) {
     if (e.button === 2 && ok) input.zoom = true; // botón derecho: apuntar con zoom
   });
   addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; if (e.button === 2) input.zoom = false; });
+  addEventListener('wheel', (e) => { if (document.pointerLockElement && input.zoom) { input.zl = e.deltaY < 0 ? 1 : 0; zlLabel(); } }, { passive: true }); // rueda: cambia el zoom del sniper
   document.addEventListener('contextmenu', (e) => e.preventDefault());
 
   if (!input.touch) return;
@@ -52,8 +56,8 @@ export function initInput(canvas) {
     p.el.firstElementChild.style.transform = `translate(${dx * r.width * 0.3}px,${dy * r.width * 0.3}px)`;
   };
   // Mantener el dedo quieto en la ruleta derecha dispara en continuo (armas automáticas); sigue disparando aunque luego apuntes.
-  input.rHeld = () => { const p = pads.R; if (p.id < 0) return false; if (!p.fireOn && p.mv < 0.6 && performance.now() - p.t0 > 150) p.fireOn = true; return !!p.fireOn; };
-  const reset = (p) => { p.fireOn = false; p.id = -1; p.x = p.y = 0; p.el.firstElementChild.style.transform = 'translate(0,0)'; };
+  input.rHeld = () => { const p = pads.R; if (p.id < 0) return false; if (!p.fireOn && !p.noFire) { if (p.mv > 0.3) p.noFire = true; else if (performance.now() - p.t0 > 220) p.fireOn = true; } return !!p.fireOn; }; // quieto = dispara; si arrastras antes, solo apuntas
+  const reset = (p) => { p.fireOn = p.noFire = false; p.id = -1; p.x = p.y = 0; p.el.firstElementChild.style.transform = 'translate(0,0)'; };
   for (const p of [pads.L, pads.R]) {
     p.el.addEventListener('touchstart', (e) => {
       e.preventDefault();
@@ -85,6 +89,9 @@ export function initInput(canvas) {
   hold($('bZoom'), () => { input.zoom = !input.zoom; $('bZoom').classList.toggle('on', input.zoom); }, () => {});
   hold($('bCrouch'), toggleCrouch, () => {});
   hold($('bRel'), () => { input.reload = true; }, () => {});
+  hold($('bSwap'), () => { input.swap = true; }, () => {});
+  hold($('bGren'), () => {}, () => {}); // explosivo: de momento sin función
+  hold($('bZl'), () => { input.zl ^= 1; zlLabel(); }, () => {});
 }
 
 // Zona muerta + curva: salida suave y precisa cerca del centro, rápida en el borde.

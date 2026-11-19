@@ -24,6 +24,15 @@ function makeClips(root, kind) {
   const fire = [], reload = [];
   if (kind === 'smg') { fire.push(T('bolt', 'z', [0, 0.03, 0.09], [0, -4.5, 0])); reload.push(T('clip', 'y', [0, 0.3, 0.45, 0.62, 1], [0, -22, -22, -2, 0]), T('bolt', 'z', [0, 0.7, 0.82, 1], [0, 0, -4.5, 0])); }
   if (kind === 'sniper') { reload.push(T('clip', 'y', [0, 0.25, 0.45, 0.6, 0.7], [0, -9, -9, -1, 0]), T('bolt', 'z', [0, 0.72, 0.84, 1], [0, 0, -7, 0]), T('boltrear', 'z', [0, 0.72, 0.84, 1], [0, 0, -7, 0])); fire.push(T('bolt', 'z', [0, 0.35, 0.5, 0.65], [0, 0, -7, 0]), T('boltrear', 'z', [0, 0.35, 0.5, 0.65], [0, 0, -7, 0])); }
+  if (kind === 'rev') { // el tambor se abre hacia la izquierda, las balas salen y se cargan una a una, y se cierra
+    const c = root.getObjectByName('clip');
+    if (c) {
+      const q0 = c.quaternion.clone(), q1 = q0.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.5));
+      reload.push(new THREE.VectorKeyframeTrack('clip.position', [0, 0.16, 0.84, 1], [c.position.x, c.position.y, c.position.z, c.position.x + 4.5, c.position.y - 1.6, c.position.z, c.position.x + 4.5, c.position.y - 1.6, c.position.z, c.position.x, c.position.y, c.position.z]));
+      reload.push(new THREE.QuaternionKeyframeTrack('clip.quaternion', [0, 0.16, 0.84, 1], [...q0.toArray(), ...q1.toArray(), ...q1.toArray(), ...q0.toArray()]));
+      for (let i = 1; i <= 6; i++) { const b = root.getObjectByName('bullet' + i); if (!b) continue; const k = b.scale; reload.push(new THREE.VectorKeyframeTrack(b.name + '.scale', [0, 0.2, 0.22, 0.32 + i * 0.07, 0.38 + i * 0.07, 1], [k.x, k.y, k.z, k.x, k.y, k.z, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, k.x, k.y, k.z, k.x, k.y, k.z])); }
+    }
+  }
   const mk = (n, d, tr) => { tr = tr.filter(Boolean); return tr.length ? new THREE.AnimationClip(n, d, tr) : null; };
   return [mk('fire', kind === 'sniper' ? 0.65 : 0.09, fire), mk('reload', 1, reload)].filter(Boolean);
 }

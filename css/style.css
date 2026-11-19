@@ -245,3 +245,18 @@ body.sniperzoom #sv{display:block}
 #equip h1{font-size:clamp(26px,8vw,46px);letter-spacing:.08em;margin:0}
 .eqrow{flex-wrap:wrap;overflow:visible}.eqc{flex:1 1 130px;max-width:200px}
 #equip .mbtns{position:sticky;bottom:0;width:100%;align-self:center;padding:14px 0 6px;background:linear-gradient(transparent,#0a0d12 35%)}
+
+/* ===== Blindaje, cambio de arma, explosivo, zoom del sniper ===== */
+#shb{height:13px}#shb span{font-size:9px;line-height:13px;letter-spacing:1.5px}
+#hel{top:calc(max(14px,env(safe-area-inset-top)) + 44px)}
+#bSwap,#bGren,#bZl{display:none;font-size:calc(var(--b)*.17);line-height:1.15;text-align:center}
+body.touch #touch #bSwap,body.touch #touch #bGren{display:flex}
+#bSwap{right:calc(var(--sr) + var(--pad)/2 + 4px);bottom:calc(var(--bt) + var(--pad) + 10px);background:#5b3aa8aa}
+#bSwap.off{opacity:.35}
+#bGren{right:calc(var(--sr) + var(--pad)/2 - var(--b) - 4px);bottom:calc(var(--bt) + var(--pad) + 10px);background:#a85a1caa}
+#bZl{left:calc(var(--sl) + var(--pad)/2 + var(--b)/2 + 8px);bottom:calc(var(--bt) + var(--pad) + 10px);background:#2c3e50cc}
+body.touch.sniper #touch #bZl{display:flex}
+/* munición en el centro, sobre agachar/recargar (táctil) */
+body.touch #ammo{right:auto;left:50%;transform:translateX(-50%);text-align:center;bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(92px,34vmin,142px)*.5 + 12px)}
+@media (orientation:portrait){body.touch #ammo{bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(90px,30vw,128px)*.42 + 12px)}}
+.stn{grid-column:1/-1;color:#ffd75e;font-size:12px;letter-spacing:.1em}#equip h3{font-size:12px}

@@ -1,5 +1,6 @@
 // Pantalla de equipamiento previa a cada misión: arma, casco y consumibles (lo comprado en la tienda).
 import { WEAPONS, HELMETS } from './config.js';
+import { loadout } from './shop.js';
 import { itemImg } from './shop.js';
 
 const INFO = { pistol: 'Equilibrada y precisa', rev: 'Lenta, perfora casco y placa', smg: 'Automática, imprecisa a la cadera', sniper: 'Zoom ×4, silenciada, perfora' };
@@ -11,11 +12,16 @@ export function renderEquip(d, change) {
   const box = document.getElementById('equipBody'); box.innerHTML = '';
   const card = (img, name, sub, on, fn) => { const b = document.createElement('button'); b.className = 'eqc' + (on ? ' on' : ''); b.innerHTML = `<div class="pic img">${img}</div><b>${name}</b><span>${sub}</span>`; b.onclick = fn; return b; };
   const sec = (t) => { const h = document.createElement('h3'); h.textContent = t; box.appendChild(h); const r = document.createElement('div'); r.className = 'eqrow'; box.appendChild(r); return r; };
-  const cur = d.weapon && d.items[d.weapon] ? d.weapon : 'pistol';
-  const rw = sec('ARMA');
-  for (const id of ['pistol', 'rev', 'smg', 'sniper']) if (id === 'pistol' || d.items[id]) rw.appendChild(card(itemImg(id), WEAPONS[id].name, INFO[id], id === cur, () => { d.weapon = id === 'pistol' ? '' : id; change('weapon'); renderEquip(d, change); }));
+  const ls = loadout(d), cur = renderEquip.last && (renderEquip.last === ls[0] || renderEquip.last === ls[1]) ? renderEquip.last : ls[0];
+  const owned = ['pistol', 'rev', 'smg', 'sniper'].filter((id) => id === 'pistol' || d.items[id]);
+  const r1 = sec('ARMA PRINCIPAL');
+  for (const id of owned) r1.appendChild(card(itemImg(id), WEAPONS[id].name, INFO[id], id === ls[0], () => { // si ya era la secundaria, se intercambian
+    if (id === ls[1]) d.weapon2 = ls[0] === 'pistol' ? 'pistol' : ls[0]; d.weapon = id === 'pistol' ? '' : id; renderEquip.last = id; change('weapon'); renderEquip(d, change); }));
+  const r2 = sec('ARMA SECUNDARIA (opcional · botón CAMBIAR ARMA)');
+  r2.appendChild(card('<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="18" fill="none" stroke="#778" stroke-width="3" stroke-dasharray="5 4"/></svg>', 'Ninguna', 'Solo llevas una arma', !ls[1], () => { d.weapon2 = ''; change('weapon'); renderEquip(d, change); }));
+  for (const id of owned) if (id !== ls[0]) r2.appendChild(card(itemImg(id), WEAPONS[id].name, INFO[id], id === ls[1], () => { d.weapon2 = id; renderEquip.last = id; change('weapon'); renderEquip(d, change); }));
   const W = WEAPONS[cur], st = document.createElement('div'); st.className = 'stats';
-  st.innerHTML = bar('Cargador', W.mag / 20) + bar('Cadencia', 1 / W.rate / 12) + bar('Recarga', 1.5 / W.reload * 0.75) + bar('Precisión', 1 / W.spreadK * (cur === 'sniper' ? 1 : 0.7)) + bar('Perforación', W.pierce ? 1 : 0.15);
+  st.innerHTML = '<div class="stn">' + W.name + '</div>' + bar('Cargador', W.mag / 20) + bar('Cadencia', 1 / W.rate / 12) + bar('Recarga', 1.5 / W.reload * 0.75) + bar('Precisión', 1 / W.spreadK * (cur === 'sniper' ? 1 : 0.7)) + bar('Perforación', W.pierce ? 1 : 0.15);
   box.appendChild(st);
   const rh = sec('CASCO');
   rh.appendChild(card('<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="18" fill="none" stroke="#778" stroke-width="3" stroke-dasharray="5 4"/></svg>', 'Sin casco', HINFO[''], !d.helmet, () => { d.helmet = ''; change('helmet'); renderEquip(d, change); }));

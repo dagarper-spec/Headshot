@@ -17,7 +17,7 @@ export const S = {
   gren: [], mines: [],            // pools de granadas y minas
   st: { reloads: 0, headHits: 0, dmg: 0 }, // estadísticas del intento (para las estrellas)
   combo: 0, comboT: 0, bestCombo: 0, points: 0, kills: 0, custom: null, endless: null,
-  helmet: 0, vest: 0, magBonus: 0, radarT: 0, chest: null, chestCoins: 0, pre: { vest: false, med: false },
+  helmet: 0, vest: 0, vestMax: 0, slot: 0, ammo: {}, magBonus: 0, radarT: 0, chest: null, chestCoins: 0, pre: { vest: false, med: false },
 };
 for (let i = 0; i < 4; i++) S.gren.push({ on: false, x: 0, z: 0, sx: 0, sz: 0, t: 0, T: 1, y: 1.6 });
 for (let i = 0; i < 6; i++) S.mines.push({ on: false, x: 0, z: 0, arm: 0 });
@@ -111,9 +111,9 @@ const lvl = () => S.custom || LEVELS[S.level];
 // Modo infinito: oleadas crecientes; la siguiente conserva vida y racha (keep).
 export function startEndless(z) { S.endless = { zone: z, wave: 1 }; startLevel(z ? 4 : 0, waveLevel(z, 1)); }
 export function nextWave() {
-  const e = S.endless; e.wave++; const hp = S.hp, mx = S.maxHp;
+  const e = S.endless; e.wave++; const hp = S.hp, mx = S.maxHp, vs = S.vest, vm = S.vestMax, sl = S.slot, am = S.ammo;
   startLevel(e.zone ? 4 : 0, waveLevel(e.zone, e.wave), true);
-  S.maxHp = mx; S.hp = Math.min(mx, hp + (e.wave % 2 ? 1 : 0)); S.points += 200 * (e.wave - 1);
+  S.maxHp = mx; S.vest = vs; S.vestMax = vm; S.slot = sl; S.ammo = am; S.hp = Math.min(mx, hp + (e.wave % 2 ? 1 : 0)); S.points += 200 * (e.wave - 1);
 }
 export function startLevel(i, custom, keep) {
   S.custom = custom || null; if (!custom) S.endless = null;
@@ -125,7 +125,7 @@ export function startLevel(i, custom, keep) {
   Object.assign(S.player, { x: 0, z: 11, yaw: 0, pitch: 0, speed: 0 });
   if (!keep) S.helmet = CFG.player.helmet || 0;
   if (!keep) { S.combo = S.comboT = S.bestCombo = S.points = S.kills = 0; }
-  S.st = { reloads: 0, headHits: 0, dmg: 0, droneT: 0 }; S.vest = S.pre.vest ? 1 : 0; S.magBonus = 0; S.radarT = 0; S.chestCoins = 0;
+  S.st = { reloads: 0, headHits: 0, dmg: 0, droneT: 0 }; S.vest = (CFG.player.armor || 0) + (S.pre.vest ? 1 : 0); S.vestMax = S.vest; S.slot = 0; S.ammo = {}; S.magBonus = 0; S.radarT = 0; S.chestCoins = 0;
   if (S.pre.med) { S.maxHp++; S.hp++; }
   S.pre = { vest: false, med: false };
   S.gold = lv.gold && !S.hasPlan ? { x: lv.gold[0], z: lv.gold[1], open: false, prog: 0, need: 2.5 } : null; // baúl dorado oculto (solo si aún no tienes el plano)
@@ -183,7 +183,7 @@ function updateChest(dt) {
   ch.open = true;
   const r = Math.random() * 100; let kind, amount = 0;
   if (r < 20) { kind = 'heal'; S.maxHp++; S.hp++; }
-  else if (r < 40) { kind = 'vest'; S.vest = 1; }
+  else if (r < 40) { kind = 'vest'; S.vest = Math.min(S.vest + 1, 4); S.vestMax = Math.max(S.vestMax, S.vest); }
   else if (r < 60) { kind = 'mag'; S.magBonus += 2; S.mag += 2; }
   else if (r < 85) { kind = 'money'; amount = 60 + 10 * Math.floor(Math.random() * 10); S.chestCoins += amount; }
   else { kind = 'radar'; S.radarT = 3.5; }
@@ -387,7 +387,7 @@ function enemyShoot(e) {
 
 function hurtPlayer(head, dmg = 1) {
   if (head && S.helmet > 0) { S.helmet--; S.combo = 0; S.comboT = 0; emit('helmetSave'); return; } // el casco absorbe un tiro a la cabeza
-  if (!head && S.vest > 0) { S.vest = 0; emit('vestHit'); return; } // el chaleco temporal absorbe un tiro al cuerpo
+  if (!head && S.vest > 0) { S.vest--; emit('vestHit'); return; } // cada punto de blindaje absorbe un tiro al cuerpo
   S.st.dmg++; S.combo = 0; S.comboT = 0; S.hp = head ? 0 : S.hp - dmg;
   emit('hurt', { head });
   if (S.hp <= 0) { S.hp = 0; S.state = 'over'; S.deathT = 0; emit('over', { head }); }

@@ -12,7 +12,7 @@ import { input, initInput, poll, resetCrouch } from './input.js';
 import { initAudio, sfx, music } from './audio.js';
 import { loadSave, writeSave, freshSave } from './save.js';
 import { ui } from './ui.js';
-import { applyUpgrades, renderShop } from './shop.js';
+import { applyUpgrades, applyWeapon, loadout, renderShop } from './shop.js';
 import { renderEquip } from './equip.js';
 import { unlocked, evalStars, applyResult, renderLevels, levelLabel } from './progress.js';
 
@@ -122,7 +122,7 @@ async function boot() {
   mus.onchange = () => { data.music = mus.value === '1'; writeSave(data); music.setOn(data.music); };
   // ----- Tienda -----
   // Carga bajo demanda el modelo del arma equipada (los GLB pesan ~1,3 MB cada uno).
-  const ensureWeapon = async (k) => { if (k && k !== 'pistol' && !view.hasWeapon(k)) { const g = await loadFps(CFG.models.dir, k); if (g) view.addWeapon(k, g); } view.setWeapon(k || 'pistol'); };
+  const ensureWeapon = async (k, show = true) => { if (k && k !== 'pistol' && !view.hasWeapon(k)) { const g = await loadFps(CFG.models.dir, k); if (g) view.addWeapon(k, g); } if (show) view.setWeapon(k || 'pistol'); };
   window.headshot.ensureWeapon = ensureWeapon;
   applyUpgrades(data); await ensureWeapon(CFG.weapon.kind);
   let shopFrom = 'menu';
@@ -131,9 +131,17 @@ async function boot() {
   $('menuShop').onclick = () => openShop('menu');
   $('shopBack').onclick = () => { ui.hide('shop'); ui.show(shopFrom); syncCont(S.state === 'pause'); };
   const note = () => levelLabel(data.level % LEVELS.length);
+  // Dos armas: guarda la munición de la actual, equipa la otra y la muestra (con un breve tiempo de cambio).
+  const swapWeapon = () => {
+    const ls = loadout(data); if (!ls[1] || S.state !== 'play') return;
+    S.ammo[CFG.weapon.kind] = S.mag; S.slot ^= 1; const k = ls[S.slot];
+    applyWeapon(data, k); view.setWeapon(k); sfx.slide && sfx.slide(0.5);
+    S.mag = S.ammo[k] ?? stats().mag; S.reloading = false; S.fireT = 0.45; input.zoom = false; $('bZoom').classList.remove('on');
+    document.body.classList.toggle('sniper', k === 'sniper');
+  };
   const launch = (lvl, ez) => { // empieza (o reanuda) la partida; ez: zona del modo infinito (si se indica)
     try { initAudio(); } catch { /* sin audio */ }
-    S.hasPlan = !!data.items.plano;
+    S.hasPlan = !!data.items.plano; 
     music.setOn(data.music); music.mode('game');
     if (!input.touch) canvas.requestPointerLock();
     ui.hide('menu'); ui.hide('over'); ui.show('hud');
@@ -144,7 +152,7 @@ async function boot() {
       data.use = data.use || {};
       if (data.cons.cMed > 0 && data.use.cMed !== false) { data.cons.cMed--; S.pre.med = true; }
       if (data.cons.cVest > 0 && data.use.cVest !== false) { data.cons.cVest--; S.pre.vest = true; }
-      writeSave(data); resetCrouch(); waveT = 0; ez != null ? core.startEndless(ez) : core.startLevel(lvl);
+      writeSave(data); resetCrouch(); waveT = 0; applyUpgrades(data); ez != null ? core.startEndless(ez) : core.startLevel(lvl); document.body.classList.toggle('sniper', CFG.weapon.kind === 'sniper');
     }
   };
   // Pantalla de equipamiento previa a la misión.
@@ -155,7 +163,7 @@ async function boot() {
     renderEquip(data, async () => { writeSave(data); applyUpgrades(data); await ensureWeapon(CFG.weapon.kind); });
     ui.show('equip');
   };
-  $('eqGo').onclick = async () => { ui.hide('equip'); applyUpgrades(data); await ensureWeapon(CFG.weapon.kind); launch(...eqPlan); }; // el modelo del arma debe estar cargado
+  $('eqGo').onclick = async () => { ui.hide('equip'); applyUpgrades(data); const ls = loadout(data); await ensureWeapon(ls[0]); if (ls[1]) await ensureWeapon(ls[1], false); launch(...eqPlan); }; // el modelo del arma debe estar cargado
   $('eqBack').onclick = () => { ui.hide('equip'); ui.menu('HEADSHOT', 'Jugar', ''); S.state = 'menu'; syncCont(false); };
   $('start').onclick = () => begin(0); // Jugar: siempre desde el nivel 1 (o continúa si está en pausa)
   $('cont').onclick = () => { let i = Math.min(data.level, LEVELS.length - 1); while (i > 0 && !unlocked(data, i)) i--; begin(i); };
@@ -240,13 +248,15 @@ async function boot() {
     if (S.state === 'play') {
       poll(dt);
       // ruletas/teclado -> velocidad angular con Delta Time; ayuda al apuntar y zoom reducen la sensibilidad
-      const k = (dt / CFG.player.sens) * (S.zoom ? 0.5 * CFG.weapon.sens : 1) * (input.touch && aimAssist() ? 0.5 : 1);
+      const k = (dt / CFG.player.sens) * (S.zoom ? 0.5 * CFG.weapon.sens * (CFG.weapon.kind === 'sniper' && !input.zl ? 1.7 : 1) : 1) * (input.touch && aimAssist() ? 0.5 : 1);
       core.look(input.dx - input.turn * 2.4 * k + input.rx * 3.3 * k, input.dy + input.ry * 2.3 * k);
       updateDrones(dt); core.update(dt, input);
       if (input.reload) reload();
+      if (input.swap) swapWeapon();
+      view.zl = input.zl;
       updateCombat(dt, input.fire || input.pulse > 0 || (CFG.weapon.auto && input.rHeld())); // pulse = toque en la ruleta derecha
     } else core.update(dt, input);
-    input.dx = input.dy = 0; input.reload = false;
+    input.dx = input.dy = 0; input.reload = false; input.swap = false;
     sfx.droneHum(S.state === 'play' ? S.drones.reduce((v, d) => (d.on && d.alive ? Math.max(v, 1 - Math.hypot(d.x - S.player.x, d.z - S.player.z) / 22) : v), 0) : 0);
     fx.update(dt); music.update(raw);
     { const km = ui.warn(S.state === 'play' ? view.warn : []); // aviso de apuntado: pitido que se acelera al cargar el tiro
