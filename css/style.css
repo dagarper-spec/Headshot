@@ -323,3 +323,37 @@ body.touch.sniper #touch #bZoom{left:calc(var(--sl) + var(--pad)/2 - var(--b) - 
 
 #cfg input[type=range],#cfg .q{touch-action:none}
 #pRow .big{font-size:12px}
+
+/* ===== Tema militar: camuflaje, acero y letra estarcida ===== */
+:root{--camo:#56633a;--ol:#3f4a26;--ol2:#2b331a;--kh:#d9d0a3;--kh2:#a89f72;--steel:#5d646b;--steel2:#343a40}
+.ov{background:#1d2315f5}
+#menu{background:
+  radial-gradient(ellipse 60% 40% at 15% 20%,#6b7a43 0 60%,transparent 61%),radial-gradient(ellipse 45% 35% at 80% 15%,#3c4726 0 60%,transparent 61%),
+  radial-gradient(ellipse 50% 38% at 70% 80%,#7a6a45 0 60%,transparent 61%),radial-gradient(ellipse 40% 30% at 20% 85%,#394422 0 60%,transparent 61%),
+  radial-gradient(ellipse 35% 28% at 50% 50%,#657445 0 60%,transparent 61%),radial-gradient(ellipse 30% 26% at 92% 55%,#4a5730 0 60%,transparent 61%),#56633a}
+#menu::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,#0000 40%,#0006 100%);pointer-events:none}
+#menu>*{position:relative;z-index:1}
+.ov h1,.cover h1{font-family:'Black Ops One',Impact,sans-serif;font-weight:400;color:var(--kh);text-shadow:0 3px 0 var(--ol2),0 0 18px #0006;background:none;-webkit-background-clip:border-box;filter:none;animation:none;letter-spacing:.1em}
+.cover h1{font-size:clamp(46px,13vw,104px);background:linear-gradient(180deg,#f2ecc9,#c9bf8a 55%,#9c9262);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 var(--ol2)) drop-shadow(0 6px 10px #0007)}
+.cover .star{position:relative;z-index:1;font-size:34px;color:var(--kh);text-shadow:0 2px 0 var(--ol2);line-height:1;margin-bottom:4px}
+.tag{font-family:'Black Ops One',Impact,sans-serif;color:var(--ol2);background:var(--kh);padding:3px 14px;letter-spacing:.3em;text-indent:0;font-size:clamp(11px,3vw,14px);border:2px solid var(--ol2);border-radius:3px;box-shadow:0 2px 0 #0005}
+.best{color:var(--kh)}
+.big{font-family:'Black Ops One',Impact,sans-serif;font-weight:400;letter-spacing:.12em;border-radius:6px;border:2px solid var(--ol2);color:var(--kh);
+  background:radial-gradient(circle at 10px 50%,#1b1f14 2.5px,#0000 3.5px),radial-gradient(circle at calc(100% - 10px) 50%,#1b1f14 2.5px,#0000 3.5px),linear-gradient(180deg,#6d7b45 0%,#4a5630 55%,#38421f 100%);
+  box-shadow:0 5px 0 var(--ol2),0 8px 16px #0007,inset 0 1px 0 #fff4,inset 0 0 0 1px #0003;text-shadow:0 2px 0 #0008}
+.big::after{background:linear-gradient(100deg,transparent,#ffffff22,transparent)}
+.big:active{box-shadow:0 1px 0 var(--ol2),inset 0 1px 0 #fff4}
+.big.play{background:radial-gradient(circle at 12px 50%,#1b1f14 3px,#0000 4px),radial-gradient(circle at calc(100% - 12px) 50%,#1b1f14 3px,#0000 4px),linear-gradient(180deg,#e2d9a8 0%,#bdb27a 55%,#968b57 100%);color:var(--ol2);text-shadow:0 1px 0 #fff8;border-color:#3a3418;
+  box-shadow:0 6px 0 #4d4524,0 10px 22px #0008,inset 0 1px 0 #fffa;animation:pulse 2s ease-in-out infinite}
+.big.alt{background:radial-gradient(circle at 10px 50%,#14171b 2.5px,#0000 3.5px),radial-gradient(circle at calc(100% - 10px) 50%,#14171b 2.5px,#0000 3.5px),linear-gradient(180deg,#767e86 0%,#4f565d 55%,#383d43 100%);color:#e9ecef;border-color:#1a1d21;box-shadow:0 5px 0 #14171b,0 8px 16px #0007,inset 0 1px 0 #fff5}
+.big.alt.inf{background:radial-gradient(circle at 10px 50%,#1e140a 2.5px,#0000 3.5px),radial-gradient(circle at calc(100% - 10px) 50%,#1e140a 2.5px,#0000 3.5px),linear-gradient(180deg,#a8854f 0%,#7d6035 55%,#5c4525 100%);color:#fbefd0;border-color:#2e2010;box-shadow:0 5px 0 #2e2010,0 8px 16px #0007,inset 0 1px 0 #fff5}
+.row3 .big::before,.row3 .big.inf::before{font-size:1em}
+.big.small{font-size:11px;opacity:.75}
+#cfg,#shop,#levels,#endless,#equip,#over{background:#1d2315f5}
+#cfg .q{color:var(--kh)}
+.rcoin{color:#fff!important;text-shadow:0 2px 0 #5a3a00,0 0 3px #5a3a00,0 0 3px #5a3a00}.rcoin b{color:#fff}
+.rtot,#coins{color:#fff}
+@media (orientation:landscape) and (max-height:520px){#menu .cover .star{font-size:22px}.cover h1{font-size:clamp(34px,13vh,60px)}.tag{font-size:10px;padding:2px 10px}}
+.cover h1{background:none;-webkit-background-clip:border-box;color:#efe8c4;filter:none;text-shadow:0 4px 0 var(--ol2),0 7px 12px #0008}
+.row3 .big,.row3 .big.alt,.row3 .big.alt.inf{background-image:linear-gradient(180deg,#767e86 0%,#4f565d 55%,#383d43 100%)}
+.row3 .big.alt.inf{background-image:linear-gradient(180deg,#a8854f 0%,#7d6035 55%,#5c4525 100%)}

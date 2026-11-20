@@ -82,7 +82,7 @@ export const sfx = {
   clunk(v = 1) { ring([620, 1450, 2700], 0.22, 0.4 * v); noise(0.05, 0.5 * v, 3000, 500, 'bandpass'); tone(110, 60, 0.08, 'sine', 0.5 * v); }, // granada metálica rebotando en el suelo
   beep() { sfx.clunk(0.5); },
   pin() { ring([3100, 4300], 0.09, 0.16); noise(0.025, 0.4, 7000, 3000, 'highpass'); ring([2300, 3700], 0.35, 0.22, 0.22); noise(0.12, 0.3, 1500, 400, 'bandpass', 0, 0.3); }, // anilla, palanca que salta y lanzamiento
-  chest() { tone(660, 990, 0.12, 'triangle', 0.25); tone(990, 1320, 0.18, 'triangle', 0.25, 0, 0.1); noise(0.12, 0.25, 3000, 800, 'bandpass'); },
+  chest() { ring([800, 1700], 0.1, 0.45); noise(0.03, 0.7, 6000, 2500, 'highpass'); noise(0.45, 0.22, 900, 600, 'bandpass', 0, 0.12); tone(95, 45, 0.22, 'sine', 0.9, 0, 0.3); noise(0.2, 0.6, 1200, 200, 'lowpass', 0, 0.3); ring([1100, 2300, 3300], 0.25, 0.22, 0.34); for (let k = 0; k < 4; k++) ring([2800 + Math.random() * 1500], 0.07, 0.1, 0.5 + k * 0.07); }, // caja de munición: pestillo, bisagra, tapa y traqueteo metálico
   armor() { ring([900, 1500, 2300], 0.3, 0.25); noise(0.05, 0.5, 5000, 1500, 'highpass'); tone(120, 60, 0.1, 'sine', 0.4); },
   phase() { tone(160, 60, 0.7, 'sawtooth', 0.5, 0.4); tone(120, 50, 0.9, 'square', 0.3, 0.4, 0.1); },
   wave() { noise(1.3, 1.3, 300, 2400, 'bandpass', 0.5); tone(130, 55, 1.0, 'sine', 1.8, 0.3); tone(260, 120, 0.7, 'triangle', 0.5, 0.3, 0.05); noise(0.35, 1.4, 2500, 350, 'lowpass', 0.4, 0.05); },
