@@ -86,7 +86,7 @@ export const LEVELS = [
 ];
 
 // ----- Modo infinito: genera la oleada w de una zona reutilizando posiciones de aparición ya validadas -----
-const TINTS = [0, 0x6f86a8, 0xb07a68, 0x6a7f5a, 0x8a6aa8, 0xa89a5a];
+const TINTS = [0, 0, 0xc23b2e, 0x2f66c0, 0xc8a24e, 0x30343a, 0x3f8a3a, 0x7a3fb0, 0xd9741f, 0xd8dde2]; // 0 = camuflaje clásico
 export function waveLevel(zone, w) {
   const pts = []; LEVELS.forEach((l) => { if ((l.zone || 0) === zone) l.enemies.forEach((e) => pts.push({ x: e.x, z: e.z })); });
   for (let i = pts.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [pts[i], pts[j]] = [pts[j], pts[i]]; }

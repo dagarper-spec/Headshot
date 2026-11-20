@@ -5,6 +5,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { camoTexture, webbingTexture } from './view-textures.js';
 import { rb, mat, buildPistol } from './view-models.js';
 
+const ROLE_TINT = { flank: 0x2f66c0, grenadier: 0xd9741f, shield: 0x4a4f57, sniper: 0x3f8a3a }; // color por rol cuando el nivel no fija uno
 const FADE = 0.2;       // segundos de mezcla entre animaciones
 const WALK_V = 1.78, RUN_V = 4.8; // m/s que "recorren" las animaciones originales (para no patinar)
 let TX;
@@ -28,10 +29,27 @@ export function createMixamoSoldier(model) {
   // Materiales propios (uno por soldado, para poder iluminar el impacto)
   const flash = [], fab = [];
   const fabric = () => new THREE.MeshStandardMaterial({ map: TX.camo, bumpMap: TX.camo, bumpScale: 0.8, color: 0xc4c4b4, roughness: 0.92, envMapIntensity: 0.25 });
+  // Detalle por zona (coordenadas de la pose de referencia, en cm): botas, guantes, pasamontañas oscuro y rodilleras; tinte fuerte con el dibujo del camuflaje.
+  const suit = (m) => {
+    const ut = { value: new THREE.Color(1, 1, 1) }, uu = { value: 0 }; m.userData.ut = ut; m.userData.uu = uu;
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uTint = ut; sh.uniforms.uUse = uu;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vBP;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvBP = position;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vBP; uniform vec3 uTint; uniform float uUse;')
+        .replace('#include <map_fragment>', `#include <map_fragment>
+        { float l = dot(sampledDiffuseColor.rgb, vec3(0.333)); vec3 t = uTint; float g = dot(t, vec3(0.333)); t = clamp(mix(vec3(g), t, 1.5), 0.0, 1.0);
+          diffuseColor.rgb = mix(diffuseColor.rgb, t * (0.38 + 1.15 * l), uUse);
+          float boot = 1.0 - smoothstep(18.0, 22.0, vBP.y), glove = smoothstep(70.0, 74.0, abs(vBP.x)), head = smoothstep(150.0, 153.0, vBP.y) * (1.0 - glove);
+          float knee = (smoothstep(42.0, 44.0, vBP.y) - smoothstep(58.0, 60.0, vBP.y)) * (1.0 - smoothstep(30.0, 36.0, abs(vBP.x)));
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.17, 0.15), knee * 0.8);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.06, 0.065, 0.07), max(max(boot, glove), head * 0.95)); }`);
+    };
+    return m;
+  };
   const joint = () => new THREE.MeshStandardMaterial({ color: 0x202326, roughness: 0.55, metalness: 0.3 });
   body.traverse((o) => {
     if (!o.isMesh) return;
-    o.material = o.name.includes('Joints') ? joint() : fabric();
+    o.material = o.name.includes('Joints') ? joint() : suit(fabric());
     o.castShadow = true; o.frustumCulled = false; flash.push(o.material); if (!o.name.includes('Joints')) fab.push(o.material);
   });
   root.updateMatrixWorld(true);
@@ -77,28 +95,41 @@ export function createMixamoSoldier(model) {
 
   // ---- AnimationMixer: un clip por estado ----
   const mixer = new THREE.AnimationMixer(body), act = {};
-  for (const k in model.clips) act[k] = mixer.clipAction(model.clips[k]);
-  act.death.setLoop(THREE.LoopOnce, 1); act.death.clampWhenFinished = true;
-  let cur = '';
+  const ONCE = { death: 1, rise: 1, reload: 1, throw: 1 }, FALL = { strafe: 'aim', rise: 'idle', reload: 'hide', throw: 'hide' };
+  const A = (k) => { // acción perezosa: los clips extra llegan después de abrir el juego
+    if (!act[k] && model.clips[k]) { const a = mixer.clipAction(model.clips[k]); if (ONCE[k]) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; } act[k] = a; }
+    return act[k] || null;
+  };
+  let cur = '', curName = '', curTint = -1;
 
   return {
     root, helmet, flash, fab, gun, muzzle,
     // Elige la animación según el estado del enemigo y mezcla con la anterior.
     update(e, dt) {
-      const want = !e.alive ? 'death' : e.aiming ? 'aim' : e.moving ? (e.next === 'aim' ? 'walk' : 'run') : e.crouch ? 'hide' : 'idle';
+      let want = !e.alive ? 'death' : e.thrA > 0 ? 'throw' : e.aiming ? (e.strafe ? (e.strafe > 0 ? 'strafeL' : 'strafeR') : 'aim')
+        : e.moving ? (e.next === 'aim' ? 'walk' : 'run') : e.riseT > 0 ? 'rise' : e.rlT > 0 && e.crouch ? 'reload' : e.crouch ? 'hide' : 'idle';
+      let name = want.startsWith('strafe') ? 'strafe' : want;
+      if (!A(name)) { name = FALL[name] || 'idle'; want = name; }
       if (want !== cur) {
-        const a = act[want];
-        a.reset().setEffectiveWeight(1).fadeIn(want === 'death' ? 0.08 : FADE).play();
-        if (act[cur]) act[cur].fadeOut(want === 'death' ? 0.08 : FADE);
-        cur = want;
+        const a = A(name), dur = a.getClip().duration;
+        a.reset().setEffectiveWeight(1).fadeIn(name === 'death' ? 0.08 : FADE);
+        if (name === 'throw') a.timeScale = 3;                       // 8 s -> ~2,7 s; la granada sale a 1,25 s
+        else if (name === 'reload') a.timeScale = dur / 2.2;
+        else if (name === 'rise') a.timeScale = dur / 0.5;
+        else if (name === 'strafe') { a.timeScale = want === 'strafeL' ? -0.7 : 0.7; if (want === 'strafeL') a.time = dur - 0.01; } // el clip va hacia la derecha; a la izquierda se reproduce al revés
+        a.play();
+        if (act[curName] && act[curName] !== a) act[curName].fadeOut(name === 'death' ? 0.08 : FADE);
+        cur = want; curName = name;
       }
-      act.walk.timeScale = (e.sp || WALK_V) / WALK_V;   // los pies siguen la velocidad real
-      act.run.timeScale = (e.sp || RUN_V) / RUN_V;
+      A('walk').timeScale = (e.sp || WALK_V) / WALK_V;   // los pies siguen la velocidad real
+      A('run').timeScale = (e.sp || RUN_V) / RUN_V;
+      const tt = e.tint || ROLE_TINT[e.role] || 0;
+      if (tt !== curTint) { curTint = tt; for (const m of fab) { m.userData.uu.value = tt ? 1 : 0; if (tt) m.userData.ut.value.setHex(tt); } }
       helmet.visible = e.helmet; plate.visible = !!e.vest;
       mixer.update(dt);
       root.updateMatrixWorld(true);
     },
     // Reinicia el ciclo de disparo para que el retroceso coincida con el tiro.
-    fire() { if (act.aim) act.aim.time = 0; },
+    fire() { const a = A('aim'); if (a) a.time = 0; },
   };
 }

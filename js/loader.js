@@ -52,6 +52,20 @@ export async function loadMixamo(dir) {
   }
 }
 
+// Animaciones extra (strafe, incorporarse, recarga, lanzar granada): se cargan en segundo plano tras abrir el juego.
+const EXTRA = { strafe: 'strafe', rise: 'rise', reload: 'reload', throw: 'throw' };
+export async function loadMixamoExtra(model, dir) {
+  if (!model || !model.mixamo) return;
+  const L = new FBXLoader();
+  await Promise.all(Object.entries(EXTRA).map(async ([k, f]) => {
+    try {
+      const c = (await L.loadAsync(dir + f + '.fbx')).animations[0]; c.name = k;
+      c.tracks.forEach((t) => { if (/Hips\.position$/.test(t.name)) for (let j = 0; j < t.values.length; j += 3) { t.values[j] = t.values[0]; t.values[j + 2] = t.values[2]; } }); // sin desplazamiento propio
+      model.clips[k] = c;
+    } catch (e) { console.info('[loader] falta animación ' + f); }
+  }));
+}
+
 // Contenedor y caja de madera del escenario (opcional). Devuelve { c1, c3 } o null si faltan los archivos.
 export async function loadProps(dir) {
   try {

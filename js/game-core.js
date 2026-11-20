@@ -137,7 +137,7 @@ export function startLevel(i, custom, keep) {
     Object.assign(e, { active: true, alive: true, x: d.x, z: d.z, hp: 2, helmet: !!d.helmet, crouch: true, state: 'hide',
       next: 'hide', timer: 1.5 + k * 0.7, react: lv.react, aimT: 0, aimK: 0, shots: 0, aiming: false, moving: false,
       sees: false, hitT: 0, face: 0, cover: null, goal: null, moveT: 0, lost: 0, spd: CFG.enemy.speed, deadT: 0, acc: lv.acc,
-      tint: d.tint || 0, seg: !!d.seg, vest: !!d.vest, arMax: (d.helmet ? 1 : 0) + (d.vest ? 1 : 0) + (d.shield ? 1 : 0) || (d.boss ? 1 : 0), role: d.role || 'rifle', boss: !!d.boss, shield: !!d.shield, shieldUp: !!d.shield, ph: 1, p2: 0, gcd: 3, mineT: 4, lastCover: null });
+      tint: d.tint || 0, seg: !!d.seg, vest: !!d.vest, arMax: (d.helmet ? 1 : 0) + (d.vest ? 1 : 0) + (d.shield ? 1 : 0) || (d.boss ? 1 : 0), role: d.role || 'rifle', boss: !!d.boss, shield: !!d.shield, shieldUp: !!d.shield, ph: 1, p2: 0, gcd: 3, mineT: 4, lastCover: null, riseT: 0, rose: false, rlT: 0, thrT: 0, thrA: 0, strafe: 0, strafeT: 0, strafeD: 1 });
     if (e.role === 'shield') e.spd = CFG.enemy.speed * 0.6;
     e.pend = false; if (d.later) { e.active = false; e.alive = false; e.pend = true; e.later = d; } // refuerzo que entra en una fase posterior
     retreat(e);
@@ -265,9 +265,9 @@ function pickPeek(c) {
 
 function retreat(e) {
   const c = pickCover(e);
-  e.aiming = false; e.moveT = 0;
+  e.aiming = false; e.moveT = 0; e.needRl = e.role !== 'sniper'; e.strafe = 0; // recargará agachado al llegar a la cubierta
   if (c) { e.lastCover = e.cover; e.cover = c; setGoal(e, c, 'hide'); plantMine(e); }
-  else { e.state = 'hide'; e.timer = 1; e.crouch = true; }
+  else { e.state = 'hide'; e.timer = 1; e.crouch = true; e.rlT = e.needRl ? 2.3 : 0; e.needRl = false; }
 }
 
 // ---------- Granadas y minas ----------
@@ -337,7 +337,8 @@ export function throwExplosive() {
 function beginAim(e) {
   const lv = lvl();
   e.state = 'aim'; e.crouch = false; e.moving = false; e.aiming = true;
-  e.aimT = e.aimDur = e.role === 'sniper' ? lv.snipeAim || 2.4 : lv.aim; // el francotirador apunta despacio e.shots = e.boss && e.ph === 3 ? 3 : Math.random() < lv.burst ? 2 : 1; e.lost = 0;
+  e.aimT = e.aimDur = e.role === 'sniper' ? lv.snipeAim || 2.4 : lv.aim; // el francotirador apunta despacio
+  e.shots = e.boss && e.ph === 3 ? 3 : Math.random() < lv.burst ? 2 : 1; e.lost = 0;
 }
 
 function turn(e, target, dt) { // giro suave hacia un ángulo
@@ -352,20 +353,25 @@ function updateEnemies(dt) {
   for (const e of S.enemies) {
     if (!e.active) continue;
     if (!e.alive) { e.deadT += dt; if (e.deadT > 3) e.active = false; continue; }
-    e.hitT -= dt; e.timer -= dt; e.gcd -= dt; e.mineT -= dt;
+    e.hitT -= dt; e.timer -= dt; e.gcd -= dt; e.mineT -= dt; e.riseT -= dt; e.rlT -= dt; e.thrA -= dt;
+    if (e.thrT > 0) { e.thrT -= dt; if (e.thrT <= 0) throwGrenade(e); } // la granada sale en el momento del lanzamiento de la animación
     e.shieldUp = e.shield && e.state !== 'aim'; // baja el escudo para apuntar
     e.h = e.crouch ? CFG.enemy.hCrouch : e.aiming ? CFG.enemy.hAim : CFG.enemy.h;
     e.sees = !blocked(e.x, e.crouch ? 1.25 : 1.65, e.z, p.x, S.eye, p.z);
     const toP = Math.atan2(p.x - e.x, p.z - e.z);
     if (e.state === 'hide') {
-      e.crouch = true; e.moving = false; turn(e, toP, dt);
+      e.crouch = !e.rose; e.moving = false; e.strafe = 0; turn(e, toP, dt);
       if (S.grace > 0) continue;
-      if (e.sees) { e.react -= dt * (S.droneSeen ? 1.5 : 1); if (e.react <= 0) beginAim(e); }
+      // Antes de asomar se incorpora (de rodillas a de pie): el tiempo de la animación cuenta como reacción
+      const rise = (fn) => { if (e.riseT > 0) return; if (!e.rose) { e.rose = true; e.riseT = 0.5; return; } e.rose = false; fn(); };
+      if (e.thrT > 0 || e.thrA > 0) { e.crouch = false; }
+      else if (e.sees) { e.react -= dt * (S.droneSeen ? 1.5 : 1); if (e.react <= 0.5 && !e.rose) { e.rose = true; e.riseT = 0.5; } if (e.react <= 0) rise(() => beginAim(e)); }
       else {
         e.react = lv.react;
         const t = tac(e);
-        if (e.timer <= 0 && e.gcd <= 0 && (t === 'grenadier' || (e.boss && e.ph === 2))) { throwGrenade(e); e.gcd = e.boss ? 3.5 + Math.random() : 4.5 + Math.random() * 1.5; e.timer = 1.2; }
-        else if (e.timer <= 0) setGoal(e, pickPeek(e.cover || e), 'aim');
+        if (e.rose && e.timer > 0.6) e.rose = false; // no se queda de pie sin motivo
+        if (e.timer <= 0 && e.gcd <= 0 && (t === 'grenadier' || (e.boss && e.ph === 2))) { e.thrT = 1.25; e.thrA = 2.8; e.gcd = e.boss ? 4.5 + Math.random() : 5.5 + Math.random() * 1.5; e.timer = 3; } // lanza la granada a mitad de la animación
+        else if (e.timer <= 0) rise(() => setGoal(e, pickPeek(e.cover || e), 'aim'));
       }
     } else if (e.state === 'move') {
       const last = !e.path || e.path.length <= 1, wp = e.path && e.path.length ? e.path[0] : e.goal;
@@ -375,7 +381,7 @@ function updateEnemies(dt) {
       if ((last && gd < 0.2) || e.moveT > 8) {
         e.moving = false;
         if (e.next === 'aim') beginAim(e);
-        else { e.state = 'hide'; e.crouch = true; e.timer = (lv.hide[0] + Math.random() * (lv.hide[1] - lv.hide[0])) * (tac(e) === 'flank' ? 0.6 : 1); e.react = lv.react; }
+        else { e.state = 'hide'; e.crouch = true; e.timer = (lv.hide[0] + Math.random() * (lv.hide[1] - lv.hide[0])) * (tac(e) === 'flank' ? 0.6 : 1); e.react = lv.react; e.rlT = e.needRl ? 2.3 : 0; e.needRl = false; }
       } else if (!last && gd < 0.25) e.path.shift(); // siguiente punto de la ruta
       else {
         turn(e, Math.atan2(gx, gz), dt);
@@ -390,6 +396,11 @@ function updateEnemies(dt) {
       }
     } else if (e.state === 'aim') {
       e.aiming = true; e.moving = false; e.crouch = false; turn(e, toP, dt);
+      if (tac(e) === 'flank' && !e.shield) { // los flanqueadores se desplazan de lado mientras apuntan (animación de strafe)
+        e.strafeT -= dt;
+        if (e.strafeT <= 0) { e.strafeD = Math.random() < 0.5 ? 1 : -1; e.strafeT = 0.7 + Math.random() * 0.8; e.strafe = Math.random() < 0.7 ? e.strafeD : 0; }
+        if (e.strafe) { const v = 1.0 * dt * e.strafe; e.x += Math.cos(e.face) * v; e.z -= Math.sin(e.face) * v; resolve(e, e.r); }
+      } else e.strafe = 0;
       if (!e.sees) { e.lost += dt; if (e.lost > 0.9) retreat(e); continue; }
       e.lost = 0; e.aimT -= dt * (S.droneSeen ? 1.35 : 1);
       e.aimK = Math.max(0, Math.min(1, 1 - e.aimT / (e.aimDur || 1)));
@@ -434,7 +445,7 @@ export function segAdvance() {
 // Entra el refuerzo (francotirador) preparado en el nivel.
 function callReserve() {
   const r = S.enemies.find((o) => o.pend); if (!r) return; const d = r.later;
-  Object.assign(r, { active: true, alive: true, pend: false, x: d.x, z: d.z, hp: 2, role: d.role || 'rifle', tint: d.tint || 0, aimT: 0, aimK: 0, aiming: false, state: 'hide', crouch: true, timer: 1.5, react: lvl().react, acc: lvl().acc, spd: CFG.enemy.speed });
+  Object.assign(r, { active: true, alive: true, pend: false, x: d.x, z: d.z, hp: 2, role: d.role || 'rifle', tint: d.tint || 0, aimT: 0, aimK: 0, aiming: false, state: 'hide', crouch: true, timer: 1.5, react: lvl().react, acc: lvl().acc, spd: CFG.enemy.speed, riseT: 0, rose: false, rlT: 0, thrT: 0, thrA: 0, strafe: 0, strafeT: 0, strafeD: 1 });
   retreat(r); emit('reserve', { e: r });
 }
 export function damageEnemy(e, head, pt, dir) {

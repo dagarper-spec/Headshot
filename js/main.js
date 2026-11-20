@@ -3,7 +3,7 @@ import { CFG, TIERS, LEVELS } from './config.js';
 import * as core from './game-core.js';
 import { updateDrones, spawnDrones } from './game-drone.js';
 import { stats, reload, updateCombat, aimAssist, spread } from './game-combat.js';
-import { loadModel, loadMixamo, loadProps } from './loader.js';
+import { loadModel, loadMixamo, loadMixamoExtra, loadProps } from './loader.js';
 import { createView } from './view-scene.js';
 import { loadFps } from './view-fps.js';
 import { createFx } from './view-fx.js';
@@ -35,6 +35,7 @@ let tier = data.quality === 'auto' ? autoTier() : data.quality;
 
 async function boot() {
   const model = (await loadMixamo(CFG.models.dir)) || (await loadModel(CFG.models.enemy)); // Mixamo > .glb > procedural
+  loadMixamoExtra(model, CFG.models.dir); // strafe, incorporarse, recarga y granada: en segundo plano
   const props = await loadProps(CFG.models.dir); // contenedores del escenario (opcional)
   const fpsData = await loadFps(CFG.models.dir); // pistola animada + mano (opcional)
   let view;

@@ -250,7 +250,6 @@ export function createView(canvas, tier, model, fpsData, props) {
         const e = S.enemies[i];
         s.g.visible = e.active;
         if (!e.active) { s.laser.visible = s.dot.visible = s.bars.visible = false; return; }
-        if (s.mx && s.tint !== e.tint) { s.tint = e.tint; s.mx.fab.forEach((m) => m.color.setHex(e.tint || 0xc4c4b4)); }
         { const ar = (e.helmet ? 1 : 0) + (e.shield ? 1 : 0) + (e.vest ? 1 : 0), arMax = Math.max(e.arMax || 0, ar);
           s.bars.visible = e.alive; s.bars.position.set(e.x, 2.12 - 0.45 * s.cr, e.z); s.bars.quaternion.copy(camera.quaternion);
           s.bHp.f.scale.x = Math.max(0.001, 0.54 * Math.max(0, e.hp) / 2);
