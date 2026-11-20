@@ -79,7 +79,7 @@ ICON.flash = (c) => `<g fill="${c}"><path d="M32 6l5 17 17-5-12 13 14 10-18 1 3 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 const TABS = [['up', 'Mejoras'], ['cons', 'Consumibles'], ['weapon', 'Armas'], ['helmet', 'Cascos'], ['glove', 'Guantes'], ['gun', 'Aspecto']];
 // Imágenes renderizadas de los objetos (assets/img/<id>.png); las que faltan usan el icono vectorial.
-export const IMGS = new Set(['pistol', 'rev', 'smg', 'sniper', 'hLight', 'hHeavy', 'sMatte', 'sBronze', 'sChrome', 'fBlue', 'fGreen', 'fRed', 'gRed', 'gCamo', 'gGold']);
+export const IMGS = new Set(['pistol', 'rev', 'smg', 'sniper', 'hLight', 'hHeavy', 'sMatte', 'sBronze', 'sChrome', 'fBlue', 'fGreen', 'fRed', 'gRed', 'gCamo', 'gGold', 'mag', 'fast', 'stab', 'vest', 'cVest', 'gren', 'mine', 'cMed']);
 export const itemImg = (id) => IMGS.has(id) ? `<img src="assets/img/${id}.png" alt="" draggable="false">` : '';
 let tab = 'up';
 

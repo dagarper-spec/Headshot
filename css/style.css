@@ -357,3 +357,11 @@ body.touch.sniper #touch #bZoom{left:calc(var(--sl) + var(--pad)/2 - var(--b) - 
 .cover h1{background:none;-webkit-background-clip:border-box;color:#efe8c4;filter:none;text-shadow:0 4px 0 var(--ol2),0 7px 12px #0008}
 .row3 .big,.row3 .big.alt,.row3 .big.alt.inf{background-image:linear-gradient(180deg,#767e86 0%,#4f565d 55%,#383d43 100%)}
 .row3 .big.alt.inf{background-image:linear-gradient(180deg,#a8854f 0%,#7d6035 55%,#5c4525 100%)}
+/* Tienda y equipamiento: estilo militar */
+.tab{font-family:'Black Ops One',Impact,sans-serif;letter-spacing:.06em;background:linear-gradient(180deg,#5d646b,#383d43);color:#e9ecef;border:2px solid #1a1d21;border-radius:6px;box-shadow:0 3px 0 #14171b;text-transform:uppercase;font-size:12px;padding:7px 12px}
+.tab.on{background:linear-gradient(180deg,#e2d9a8,#a89f72);color:#2b331a;border-color:#3a3418;box-shadow:0 3px 0 #4d4524}
+.item,.eqc{background:linear-gradient(180deg,#3a4430,#232a1b);border:2px solid #1b2112;border-radius:8px;box-shadow:0 4px 0 #12160b,inset 0 1px 0 #ffffff1f}
+.item b,.eqc b{color:var(--kh)}
+.item .pic.img,.eqc .pic{background:radial-gradient(ellipse at 50% 40%,#5d6a4a,#252c1d);border:1px solid #0006}
+.item em,.eqc em{font-family:'Black Ops One',Impact,sans-serif;font-style:normal;letter-spacing:.06em;color:#fff}
+.item.sel,.eqc.sel,.item.on,.eqc.on{border-color:var(--kh);box-shadow:0 0 0 2px #d9d0a388,0 4px 0 #12160b}
